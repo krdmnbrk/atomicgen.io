@@ -17,6 +17,7 @@ import moderate from './samples/scheduled_task_startup_script.yaml';
 import complex from './samples/windows_push_file_using_scp.exe.yaml';
 import { Typography } from '@mui/material';
 import UploadButton from './UploadButton';
+import RepoLoaderButton from './RepoLoaderButton';
 import transformInputArguments from './transformInputArguments';
 
 
@@ -91,6 +92,15 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
                     setChanged={setChanged}
                     changed={changed}
                 />
+                <RepoLoaderButton
+                    base={base}
+                    setInputs={setInputs}
+                    darkMode={darkMode}
+                    setInputButtonErrors={setInputButtonErrors}
+                    inputButtonErrors={inputButtonErrors}
+                    setChanged={setChanged}
+                    changed={changed}
+                />
             </ButtonGroup>
             {inputButtonErrors.length > 0 &&
                 <Alert sx={{ mt: 1 }} variant={darkMode ? "outlined" : "filled"} severity='error'>
@@ -112,7 +122,18 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
                         {...TransitionProps}
 
                     >
-                        <Paper elevation={6}>
+                        <Paper
+                            elevation={6}
+                            sx={{
+                                background: 'var(--glass-modal)',
+                                backdropFilter: 'blur(28px) saturate(180%)',
+                                WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+                                border: '1px solid var(--glass-stroke-strong)',
+                                borderRadius: 2,
+                                mt: 0.5,
+                                boxShadow: 'var(--shadow-modal)',
+                            }}
+                        >
                             <ClickAwayListener onClickAway={handleClose}>
                                 <MenuList id="split-button-menu" autoFocusItem>
                                     {

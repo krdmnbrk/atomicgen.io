@@ -79,21 +79,23 @@ function Arguments({ darkMode, errors, setErrors, inputs, setInputs }) {
     };
 
     return (
-        <Box sx={{ mb: 2 }}>
-            {/* Title for Input Arguments Section */}
-            <Typography variant="subtitle1" gutterBottom>
-                Input Arguments
-            </Typography>
-
+        <Box>
             {/* Button to Add Input Arguments */}
-            <Box sx={{ mt: 1 }}>
+            <Box>
                 <Button
-                    sx={{ mb: 1 }}
+                    sx={{
+                        mb: 1,
+                        textTransform: 'none',
+                        borderRadius: 1.5,
+                        borderColor: 'var(--glass-stroke-strong)',
+                        '&:hover': { borderColor: 'primary.main', background: 'var(--accent-soft)' },
+                    }}
                     startIcon={<AddCircleOutlineIcon />}
-                    variant={darkMode ? "outlined" : "contained"} 
+                    variant="outlined"
+                    color="primary"
                     onClick={addInputArgument}
                 >
-                    Add Input Argument {inputs.input_arguments.length > 0 ? `(${inputs.input_arguments.length})` : ''}
+                    Add input argument {inputs.input_arguments.length > 0 ? `(${inputs.input_arguments.length})` : ''}
                 </Button>
             </Box>
 
@@ -110,7 +112,16 @@ function Arguments({ darkMode, errors, setErrors, inputs, setInputs }) {
 
             {/* Render Each Input Argument */}
             {inputs.input_arguments.map((arg, index) => (
-                <Box key={`input-argument-${index}`} sx={{ mb: 2, border: '1px solid #ccc', p: 2 }}>
+                <Box
+                    key={`input-argument-${index}`}
+                    sx={{
+                        mb: 1.5,
+                        background: 'var(--glass-inset)',
+                        border: '1px solid var(--glass-stroke)',
+                        borderRadius: 2,
+                        p: 1.75,
+                    }}
+                >
                     {/* Argument Name */}
                     <TextField
                         spellCheck="false"

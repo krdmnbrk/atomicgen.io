@@ -2,4 +2,4 @@
 - [x] Atomic attack YAML upload to edit exist one
 - [x] Show sample atomic test button
 - [ ] Dependabot configuration
-- [ ] Load atomic test from the main repository (https://github.com/redcanaryco/atomic-red-team/tree/master/atomics).
+- [x] Load atomic test from the main repository (https://github.com/redcanaryco/atomic-red-team/tree/master/atomics).

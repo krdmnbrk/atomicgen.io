@@ -4,9 +4,9 @@ import YamlContent from './components/YamlContent';
 import Navbar from './components/Navbar';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import GlobalStyles from '@mui/material/GlobalStyles';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
-import { red, grey } from '@mui/material/colors';
 
 const executor_names = [
   "powershell",
@@ -79,7 +79,7 @@ const validationRules = {
   },
 };
 
-// Validate Inputs Function
+// Validate Inputs Function (original recursive logic — must handle arrays vs objects distinctly)
 const validateInputs = (data, rules) => {
   const errors = [];
   Object.keys(rules).forEach((key) => {
@@ -98,35 +98,28 @@ const validateInputs = (data, rules) => {
       }
     }
 
-    // Nested Validation: Array
+    // Nested Validation: Array — iterate each item with nested rules
     if (rule.nestedValidation && Array.isArray(value)) {
-      value.forEach((item, index) => {
+      value.forEach((item) => {
         const nestedErrors = validateInputs(item, rule.nestedValidation);
-        if (nestedErrors.length > 0) {
-          nestedErrors.forEach((error) => {
-            errors.push(error);
-          });
-        }
+        nestedErrors.forEach((error) => errors.push(error));
       });
     }
 
     // Nested Validation: Object
-    if (rule.nestedValidation && typeof value === "object" && !Array.isArray(value)) {
+    if (rule.nestedValidation && typeof value === 'object' && !Array.isArray(value) && value !== null) {
       const nestedErrors = validateInputs(value, rule.nestedValidation);
-      if (nestedErrors.length > 0) {
-        nestedErrors.forEach((error) => {
-          errors.push(error);
-        });
-      }
+      nestedErrors.forEach((error) => errors.push(error));
     }
   });
   return errors;
 };
 
+
 function App() {
   const [errors, setErrors] = useState([]);
-  const [validationErrors, setValidationErrors] = useState([]);
   const [inputButtonErrors, setInputButtonErrors] = useState([]);
+  const [validationErrors, setValidationErrors] = useState([]);
   const [updated, setUpdated] = useState(false);
   const [inputs, setInputs] = useState(base);
   const [darkMode, setDarkMode] = useState(true);
@@ -139,7 +132,7 @@ function App() {
       if (changed) {
         event.preventDefault();
         event.returnValue = "";
-      } 
+      }
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -188,47 +181,239 @@ function App() {
     }
   }, [updated, inputs]);
 
-  // Dark Theme
+  // Liquid Glass — Dark
   const darkTheme = createTheme({
     palette: {
       mode: 'dark',
-      primary: {
-        main: red[500],
-        contrastText: '#fff',
-      },
+      primary: { main: '#FF5C39', light: '#FF8A66', dark: '#E04A1E', contrastText: '#fff' },
+      secondary: { main: '#FF8A66' },
+      success: { main: '#4DDD96' },
+      warning: { main: '#F5B74E' },
+      error: { main: '#E5484D' },
+      info: { main: '#6FA9FF' },
       background: {
-        paper: "#0a0a0a",
+        default: '#07080B',
+        paper: 'rgba(20, 24, 32, 0.55)',
       },
       text: {
-        primary: '#fff',
-        secondary: grey[500],
+        primary: '#F0F2F5',
+        secondary: '#9AA3AE',
+        disabled: '#5E6772',
+      },
+      divider: 'rgba(255, 255, 255, 0.08)',
+    },
+    typography: {
+      fontFamily: "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif",
+    },
+    shape: { borderRadius: 12 },
+    components: {
+      MuiPaper: {
+        styleOverrides: {
+          root: { backgroundImage: 'none' },
+        },
+      },
+      MuiDialog: {
+        styleOverrides: {
+          paper: {
+            background: 'rgba(20, 24, 32, 0.72)',
+            backdropFilter: 'blur(28px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+            border: '1px solid rgba(255, 255, 255, 0.10)',
+            boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.08), 0 32px 80px -16px rgba(0, 0, 0, 0.65)',
+            borderRadius: 16,
+            backgroundImage: 'none',
+          },
+        },
+      },
+      MuiMenu: {
+        styleOverrides: {
+          paper: {
+            background: 'rgba(20, 24, 32, 0.72)',
+            backdropFilter: 'blur(28px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+            border: '1px solid rgba(255, 255, 255, 0.10)',
+            boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.06), 0 16px 40px -8px rgba(0, 0, 0, 0.5)',
+            backgroundImage: 'none',
+          },
+        },
+      },
+      MuiPopover: {
+        styleOverrides: {
+          paper: {
+            background: 'rgba(20, 24, 32, 0.72)',
+            backdropFilter: 'blur(28px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+            border: '1px solid rgba(255, 255, 255, 0.10)',
+            boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.06), 0 16px 40px -8px rgba(0, 0, 0, 0.5)',
+            backgroundImage: 'none',
+          },
+        },
+      },
+      MuiBackdrop: {
+        styleOverrides: {
+          root: {
+            backgroundColor: 'rgba(0, 0, 0, 0.45)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            '&.MuiBackdrop-invisible': {
+              backgroundColor: 'transparent',
+              backdropFilter: 'none',
+              WebkitBackdropFilter: 'none',
+            },
+          },
+        },
+      },
+      MuiCssBaseline: {
+        styleOverrides: {
+          'code, pre, .mono': { fontFamily: "'JetBrains Mono', ui-monospace, monospace" },
+        },
       },
     },
   });
 
+  // Liquid Glass — Light
   const lightTheme = createTheme({
     palette: {
       mode: 'light',
-      primary: {
-        main: red[900],
-        contrastText: '#fff',
-      },
+      primary: { main: '#E04A1E', light: '#FF7A57', dark: '#C13C12', contrastText: '#fff' },
+      secondary: { main: '#FF7A57' },
+      success: { main: '#1F9D67' },
+      warning: { main: '#C28419' },
+      error: { main: '#C63842' },
+      info: { main: '#2A6FCC' },
       background: {
-        paper: "#fff",
+        default: '#F2EEEA',
+        paper: 'rgba(255, 255, 255, 0.65)',
       },
       text: {
-        primary: "#000",
-        secondary: grey[600],
+        primary: '#14161A',
+        secondary: '#56606C',
+        disabled: '#8A929E',
+      },
+      divider: 'rgba(0, 0, 0, 0.06)',
+    },
+    typography: {
+      fontFamily: "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif",
+    },
+    shape: { borderRadius: 12 },
+    components: {
+      MuiPaper: {
+        styleOverrides: {
+          root: { backgroundImage: 'none' },
+        },
+      },
+      MuiDialog: {
+        styleOverrides: {
+          paper: {
+            background: 'rgba(252, 252, 250, 0.78)',
+            backdropFilter: 'blur(28px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+            border: '1px solid rgba(0, 0, 0, 0.06)',
+            boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.06), 0 32px 80px -16px rgba(0, 0, 0, 0.18)',
+            borderRadius: 16,
+            backgroundImage: 'none',
+          },
+        },
+      },
+      MuiMenu: {
+        styleOverrides: {
+          paper: {
+            background: 'rgba(252, 252, 250, 0.78)',
+            backdropFilter: 'blur(28px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+            border: '1px solid rgba(0, 0, 0, 0.06)',
+            boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.04), 0 16px 40px -8px rgba(0, 0, 0, 0.14)',
+            backgroundImage: 'none',
+          },
+        },
+      },
+      MuiPopover: {
+        styleOverrides: {
+          paper: {
+            background: 'rgba(252, 252, 250, 0.78)',
+            backdropFilter: 'blur(28px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+            border: '1px solid rgba(0, 0, 0, 0.06)',
+            boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.04), 0 16px 40px -8px rgba(0, 0, 0, 0.14)',
+            backgroundImage: 'none',
+          },
+        },
+      },
+      MuiBackdrop: {
+        styleOverrides: {
+          root: {
+            backgroundColor: 'rgba(0, 0, 0, 0.18)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            '&.MuiBackdrop-invisible': {
+              backgroundColor: 'transparent',
+              backdropFilter: 'none',
+              WebkitBackdropFilter: 'none',
+            },
+          },
+        },
       },
     },
   });
+
+  // Global styles — gradient mesh + noise + glass utilities
+  const globalStyles = (
+    <GlobalStyles
+      styles={(theme) => ({
+        ':root': {
+          '--accent': theme.palette.primary.main,
+          '--accent-2': theme.palette.primary.light,
+          '--accent-soft': darkMode ? 'rgba(255, 92, 57, 0.15)' : 'rgba(224, 74, 30, 0.12)',
+          '--glass': darkMode ? 'rgba(20, 24, 32, 0.55)' : 'rgba(255, 255, 255, 0.65)',
+          '--glass-strong': darkMode ? 'rgba(20, 24, 32, 0.75)' : 'rgba(255, 255, 255, 0.85)',
+          '--glass-modal': darkMode ? 'rgba(20, 24, 32, 0.72)' : 'rgba(252, 252, 250, 0.78)',
+          '--glass-stroke': darkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+          '--glass-stroke-strong': darkMode ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.12)',
+          '--glass-inset': darkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.7)',
+          '--shadow-glow': darkMode
+            ? '0 0 0 1px rgba(255, 255, 255, 0.06), 0 24px 60px -20px rgba(0, 0, 0, 0.65)'
+            : '0 0 0 1px rgba(0, 0, 0, 0.04), 0 24px 60px -20px rgba(0, 0, 0, 0.16)',
+          '--shadow-modal': darkMode
+            ? '0 0 0 1px rgba(255, 255, 255, 0.10), 0 32px 80px -16px rgba(0, 0, 0, 0.85)'
+            : '0 0 0 1px rgba(0, 0, 0, 0.06), 0 32px 80px -16px rgba(0, 0, 0, 0.20)',
+          '--text-faint': darkMode ? '#5E6772' : '#8A929E',
+        },
+        body: {
+          margin: 0,
+          background: theme.palette.background.default,
+          color: theme.palette.text.primary,
+          minHeight: '100vh',
+          overflowX: 'hidden',
+          fontFamily: "'Inter', system-ui, sans-serif",
+          WebkitFontSmoothing: 'antialiased',
+          textRendering: 'optimizeLegibility',
+        },
+        'body::before': {
+          content: '""',
+          position: 'fixed',
+          inset: 0,
+          zIndex: -1,
+          background: darkMode
+            ? `radial-gradient(ellipse 70% 60% at 18% 12%, rgba(99, 65, 175, 0.28), transparent 65%),
+               radial-gradient(ellipse 80% 70% at 86% 90%, rgba(48, 110, 190, 0.22), transparent 65%)`
+            : `radial-gradient(ellipse 70% 60% at 18% 12%, rgba(160, 130, 220, 0.22), transparent 65%),
+               radial-gradient(ellipse 80% 70% at 86% 90%, rgba(110, 165, 220, 0.20), transparent 65%)`,
+          pointerEvents: 'none',
+        },
+        'code, pre, .mono': {
+          fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+        },
+      })}
+    />
+  );
 
   return (
     <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
       <CssBaseline />
+      {globalStyles}
       <Navbar darkMode={darkMode} setDarkMode={setDarkMode} />
-      <Box sx={{ p: 2 }}>
-        <Grid container spacing={2}>
+      <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 1500, mx: 'auto' }}>
+        <Grid container spacing={{ xs: 2, md: 3 }}>
           <Grid size={isPortrait ? 12 : 6}>
             <Inputs
               base={base}

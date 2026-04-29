@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>atomicgen — Liquid Glass</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root[data-theme="dark"] {
+    --bg-base: #07080B;
+    --text: #F0F2F5;
+    --text-muted: #9AA3AE;
+    --text-faint: #5E6772;
+    --accent: #FF5C39;
+    --accent-2: #FF8A66;
+    --accent-soft: rgba(255, 92, 57, 0.15);
+    --glass: rgba(20, 24, 32, 0.45);
+    --glass-strong: rgba(20, 24, 32, 0.65);
+    --glass-stroke: rgba(255, 255, 255, 0.08);
+    --glass-stroke-strong: rgba(255, 255, 255, 0.14);
+    --glass-inset: rgba(255, 255, 255, 0.04);
+    --shadow-glow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 24px 60px -20px rgba(0, 0, 0, 0.65);
+    --success: #4DDD96;
+    --warning: #F5B74E;
+    --danger: #E5484D;
+    --info: #6FA9FF;
+  }
+  :root[data-theme="light"] {
+    --bg-base: #F2EEEA;
+    --text: #14161A;
+    --text-muted: #56606C;
+    --text-faint: #8A929E;
+    --accent: #E04A1E;
+    --accent-2: #FF7A57;
+    --accent-soft: rgba(224, 74, 30, 0.12);
+    --glass: rgba(255, 255, 255, 0.55);
+    --glass-strong: rgba(255, 255, 255, 0.78);
+    --glass-stroke: rgba(0, 0, 0, 0.06);
+    --glass-stroke-strong: rgba(0, 0, 0, 0.12);
+    --glass-inset: rgba(255, 255, 255, 0.7);
+    --shadow-glow: 0 0 0 1px rgba(0, 0, 0, 0.04), 0 24px 60px -20px rgba(0, 0, 0, 0.16);
+    --success: #1F9D67;
+    --warning: #C28419;
+    --danger: #C63842;
+    --info: #2A6FCC;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg-base);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  /* Animated gradient mesh background */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: -2;
+    background:
+      radial-gradient(circle at 12% 18%, rgba(255, 92, 57, 0.30), transparent 35%),
+      radial-gradient(circle at 88% 10%, rgba(120, 60, 200, 0.28), transparent 40%),
+      radial-gradient(circle at 76% 82%, rgba(40, 180, 220, 0.22), transparent 42%),
+      radial-gradient(circle at 16% 92%, rgba(255, 168, 60, 0.20), transparent 38%);
+    animation: drift 24s ease-in-out infinite alternate;
+  }
+  body::after {
+    content: '';
+    position: fixed; inset: 0; z-index: -1;
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.05 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    opacity: 0.5;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+  }
+  :root[data-theme="light"] body::before {
+    background:
+      radial-gradient(circle at 12% 18%, rgba(255, 130, 90, 0.32), transparent 38%),
+      radial-gradient(circle at 88% 10%, rgba(180, 130, 220, 0.32), transparent 40%),
+      radial-gradient(circle at 76% 82%, rgba(80, 200, 230, 0.30), transparent 42%),
+      radial-gradient(circle at 16% 92%, rgba(255, 200, 100, 0.30), transparent 40%);
+  }
+  @keyframes drift {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(-20px, 30px) scale(1.06); }
+  }
+  code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* Compare strip */
+  .compare-strip {
+    background: var(--glass);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border-bottom: 1px solid var(--glass-stroke);
+    padding: 8px 24px;
+    font-size: 12px; color: var(--text-muted);
+    display: flex; gap: 16px; align-items: center;
+  }
+  .compare-strip strong { color: var(--text); }
+  .compare-strip a { color: var(--accent); text-decoration: none; }
+  .compare-strip a:hover { text-decoration: underline; }
+  .compare-strip .badge {
+    font-size: 11px; font-weight: 600;
+    padding: 3px 8px; border-radius: 6px;
+    background: var(--accent-soft); color: var(--accent);
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .compare-strip .right { margin-left: auto; }
+
+  /* Navbar — glass */
+  .navbar {
+    background: var(--glass);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border-bottom: 1px solid var(--glass-stroke);
+    position: sticky; top: 0; z-index: 20;
+  }
+  .navbar-inner {
+    display: flex; align-items: center;
+    padding: 14px 28px;
+    gap: 16px;
+  }
+  .navbar-brand { display: flex; align-items: center; text-decoration: none; color: var(--text); flex: 1; }
+  .navbar-logo { width: 45px; height: 45px; margin-right: 18px; flex-shrink: 0; filter: drop-shadow(0 4px 16px rgba(255, 92, 57, 0.4)); }
+  .navbar-titles .title { font-size: 22px; font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; }
+  .navbar-titles .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .navbar-actions { display: flex; align-items: center; gap: 4px; }
+  .nav-btn {
+    background: transparent; border: none; color: var(--text);
+    font: inherit; font-size: 15px;
+    padding: 8px 14px; border-radius: 10px;
+    cursor: pointer; transition: background 0.18s;
+  }
+  .nav-btn:hover { background: var(--glass-strong); }
+  .nav-icon-btn {
+    width: 40px; height: 40px;
+    display: grid; place-items: center;
+    background: transparent; border: none; color: var(--text);
+    border-radius: 10px; cursor: pointer; transition: background 0.18s;
+  }
+  .nav-icon-btn:hover { background: var(--glass-strong); }
+  .navbar-line {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent) 30%, var(--accent-2) 50%, var(--accent) 70%, transparent);
+    opacity: 0.6;
+  }
+
+  /* Glass surface */
+  .glass {
+    background: var(--glass);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 20px;
+    box-shadow: var(--shadow-glow);
+    position: relative;
+  }
+  .glass::before {
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: inherit;
+    border: 1px solid transparent;
+    background: linear-gradient(135deg, var(--glass-stroke-strong), transparent 50%) border-box;
+    -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events: none;
+  }
+  .glass-strong { background: var(--glass-strong); }
+
+  /* Body */
+  .body {
+    padding: 32px;
+    max-width: 1500px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* Prompt — full width hero */
+  .prompt-hero {
+    grid-column: 1 / -1;
+    padding: 18px 22px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .prompt-hero .glow {
+    width: 36px; height: 36px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    display: grid; place-items: center;
+    color: white;
+    box-shadow: 0 8px 24px -8px var(--accent), inset 0 1px 0 rgba(255,255,255,0.4);
+    flex-shrink: 0;
+  }
+  .prompt-hero input {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--text); font: inherit; font-size: 16px;
+    padding: 8px 0;
+  }
+  .prompt-hero input::placeholder { color: var(--text-faint); }
+  .prompt-hero .submit {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    color: white; border: none;
+    padding: 10px 16px; border-radius: 10px;
+    font-weight: 600; font-size: 13px;
+    cursor: pointer;
+    box-shadow: 0 8px 22px -8px var(--accent), inset 0 1px 0 rgba(255,255,255,0.3);
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .prompt-hero .submit kbd { background: rgba(0,0,0,0.22); padding: 2px 5px; border-radius: 4px; font: inherit; font-size: 10px; }
+  .prompt-hero .icon-btn-glass {
+    width: 36px; height: 36px;
+    background: transparent; border: 1px solid var(--glass-stroke);
+    border-radius: 10px;
+    display: grid; place-items: center;
+    color: var(--text-muted); cursor: pointer; transition: all 0.12s;
+  }
+  .prompt-hero .icon-btn-glass:hover { background: var(--glass-strong); color: var(--text); }
+
+  /* Section */
+  .section {
+    padding: 22px 24px;
+    margin-bottom: 16px;
+  }
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .section-title {
+    font-size: 11px; font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.10em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title .icon { color: var(--accent); }
+  .section-meta { font-size: 11px; color: var(--text-faint); }
+
+  /* Field */
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block; font-size: 12px; font-weight: 500;
+    color: var(--text-muted); margin-bottom: 6px;
+  }
+  .field label .req { color: var(--accent); margin-left: 2px; }
+  .field input, .field textarea, .field select {
+    width: 100%; background: var(--glass-inset);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 12px;
+    padding: 10px 12px; font: inherit; color: var(--text);
+    backdrop-filter: blur(10px);
+    transition: border-color 0.18s, box-shadow 0.18s;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-soft);
+  }
+  .field textarea { resize: vertical; min-height: 64px; font-family: inherit; }
+
+  /* Chips */
+  .chip-input {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    background: var(--glass-inset); border: 1px solid var(--glass-stroke);
+    border-radius: 12px; padding: 8px 10px; min-height: 40px; align-items: center;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: linear-gradient(135deg, var(--accent-soft), transparent);
+    color: var(--accent);
+    border: 1px solid rgba(255, 92, 57, 0.3);
+    font-size: 12px; font-weight: 500;
+    padding: 3px 9px; border-radius: 14px;
+  }
+  .chip .x { cursor: pointer; opacity: 0.7; }
+  .chip-input input {
+    flex: 1; min-width: 80px;
+    background: transparent; border: none; outline: none;
+    color: var(--text); font: inherit;
+  }
+
+  /* Toggle */
+  .toggle {
+    display: inline-flex; align-items: center; gap: 8px;
+    cursor: pointer; font-size: 13px; color: var(--text-muted);
+  }
+  .toggle .sw {
+    width: 36px; height: 20px;
+    background: var(--glass-inset);
+    border: 1px solid var(--glass-stroke); border-radius: 12px;
+    position: relative; transition: background 0.18s;
+  }
+  .toggle .sw::after {
+    content: ''; position: absolute; top: 1px; left: 1px;
+    width: 16px; height: 16px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    transition: transform 0.22s, background 0.22s;
+  }
+  .toggle.on .sw {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-color: transparent;
+  }
+  .toggle.on .sw::after { transform: translateX(16px); background: white; }
+  .toggle.on { color: var(--text); }
+
+  .row-2 { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: end; }
+
+  /* Args list */
+  .args-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  .args-item {
+    display: grid; grid-template-columns: 1fr auto auto 24px;
+    gap: 10px; align-items: center;
+    background: var(--glass-inset); border: 1px solid var(--glass-stroke);
+    border-radius: 10px; padding: 9px 12px; font-size: 12px;
+  }
+  .args-item .name { font-family: 'JetBrains Mono', monospace; color: var(--accent); font-weight: 500; }
+  .args-item .type { color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 2px 7px; background: var(--glass-strong); border-radius: 6px; }
+  .args-item .default { color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .args-item .del { color: var(--text-faint); cursor: pointer; }
+  .add-row {
+    width: 100%; padding: 9px;
+    background: transparent; border: 1px dashed var(--glass-stroke-strong);
+    color: var(--text-muted); border-radius: 10px;
+    font: inherit; font-size: 12px; cursor: pointer;
+    transition: all 0.18s;
+  }
+  .add-row:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+  /* Editor */
+  .editor {
+    background: var(--glass-inset);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px; line-height: 1.65;
+    color: var(--text); min-height: 100px;
+    overflow-x: auto; white-space: pre;
+  }
+  .tok-c { color: var(--text-faint); font-style: italic; }
+  .tok-cmd { color: var(--info); }
+  .tok-arg { color: var(--accent); font-weight: 500; }
+  .tok-str { color: var(--success); }
+  .tok-flag { color: var(--warning); }
+
+  /* YAML pane */
+  .yaml-pane {
+    position: sticky; top: 100px;
+    overflow: hidden;
+    max-height: calc(100vh - 130px);
+    display: flex; flex-direction: column;
+    padding: 0;
+  }
+  .yaml-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--glass-stroke);
+  }
+  .yaml-actions { display: flex; gap: 4px; }
+  .icon-btn-glass-sm {
+    width: 30px; height: 30px;
+    background: transparent; border: 1px solid var(--glass-stroke);
+    border-radius: 8px;
+    display: grid; place-items: center;
+    color: var(--text-muted); cursor: pointer; transition: all 0.12s;
+  }
+  .icon-btn-glass-sm:hover { background: var(--glass-strong); color: var(--text); }
+  .yaml-body {
+    flex: 1; overflow: auto;
+    padding: 18px 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px; line-height: 1.65;
+    white-space: pre;
+  }
+  .yk { color: var(--info); }
+  .ys { color: var(--success); }
+  .yn { color: var(--warning); }
+  .yc { color: var(--text-faint); font-style: italic; }
+  .ya { color: var(--accent); font-weight: 500; }
+
+  .errors-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--success);
+    background: rgba(77, 221, 150, 0.10);
+    border: 1px solid rgba(77, 221, 150, 0.28);
+    padding: 3px 9px; border-radius: 14px;
+    backdrop-filter: blur(12px);
+  }
+  .errors-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px var(--success); }
+
+  @media (max-width: 1100px) {
+    .body { grid-template-columns: 1fr; }
+    .yaml-pane { position: static; max-height: 600px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="compare-strip">
+  <span class="badge">Mockup 02</span>
+  <strong>Liquid Glass</strong>
+  <span style="color: var(--text-faint);">— iOS 26 / macOS Tahoe inspired, frosted surfaces 2026</span>
+  <span class="right">
+    <a href="index.html">← All mockups</a> · <a href="/">Live app</a> · <a href="#" id="theme-toggle">Toggle theme</a>
+  </span>
+</div>
+
+<header class="navbar">
+  <div class="navbar-inner">
+    <a class="navbar-brand" href="#" onclick="event.preventDefault()">
+      <img class="navbar-logo" src="/atomicgen-logo-orange.svg" alt="atomicgen.io" />
+      <div class="navbar-titles">
+        <div class="title">atomicgen.io</div>
+        <div class="subtitle">atomic test generator</div>
+      </div>
+    </a>
+    <div class="navbar-actions">
+      <button class="nav-btn">Related Links ▾</button>
+      <button class="nav-icon-btn" aria-label="GitHub">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56v-2.18c-3.2.7-3.87-1.36-3.87-1.36-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.76 2.69 1.25 3.34.96.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.27-5.24-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.45.11-3.02 0 0 .96-.31 3.16 1.17.91-.25 1.89-.38 2.87-.38s1.96.13 2.87.38c2.2-1.48 3.16-1.17 3.16-1.17.62 1.57.23 2.73.11 3.02.74.8 1.18 1.82 1.18 3.07 0 4.4-2.69 5.36-5.25 5.65.41.36.78 1.06.78 2.13v3.16c0 .31.21.68.8.56C20.21 21.39 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+      </button>
+      <button class="nav-icon-btn" id="theme-toggle-btn" aria-label="Theme">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="navbar-line"></div>
+</header>
+
+<main class="body">
+
+  <div class="glass prompt-hero">
+    <div class="glow">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/></svg>
+    </div>
+    <input type="text" placeholder="Describe a test, paste a procedure, or pick a technique…" value="disable splunk forwarder agent" />
+    <button class="icon-btn-glass" title="Settings">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+    </button>
+    <button class="submit">Generate <kbd>⌘↵</kbd></button>
+  </div>
+
+  <!-- LEFT: Form sections in glass surfaces -->
+  <div>
+    <div class="glass section">
+      <div class="section-header">
+        <div class="section-title">
+          <svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Identity
+        </div>
+      </div>
+      <div class="field">
+        <label>Atomic name <span class="req">*</span></label>
+        <input type="text" value="Disable Splunk Forwarder service (Linux)" />
+      </div>
+      <div class="field">
+        <label>Description <span class="req">*</span></label>
+        <textarea>Stops and disables the splunkforwarder systemd unit on Linux. Verify with: systemctl is-enabled SplunkForwarder.</textarea>
+      </div>
+      <div class="field">
+        <label>Supported platforms <span class="req">*</span></label>
+        <div class="chip-input">
+          <span class="chip">linux <span class="x">×</span></span>
+          <input type="text" placeholder="add platform…" />
+        </div>
+      </div>
+    </div>
+
+    <div class="glass section">
+      <div class="section-header">
+        <div class="section-title">
+          <svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          Execution
+        </div>
+        <span class="section-meta">2 input arguments</span>
+      </div>
+      <div class="row-2" style="margin-bottom: 14px;">
+        <div class="field" style="margin-bottom: 0;">
+          <label>Attack executor <span class="req">*</span></label>
+          <select>
+            <option>bash</option><option>sh</option><option>powershell</option><option>command_prompt</option>
+          </select>
+        </div>
+        <div class="toggle on" style="padding-bottom: 11px;">
+          <span class="sw"></span><span>Elevation required</span>
+        </div>
+      </div>
+      <label style="display: block; font-size: 12px; font-weight: 500; color: var(--text-muted); margin-bottom: 6px;">Input arguments <span style="color: var(--text-faint); font-weight: 400;">— ref'd as <code style="background: var(--glass-strong); padding: 0 5px; border-radius: 4px; font-size: 11px;">#{name}</code> in command</span></label>
+      <div class="args-list">
+        <div class="args-item">
+          <span class="name">service_name</span>
+          <span class="type">string</span>
+          <span class="default">SplunkForwarder</span>
+          <span class="del">×</span>
+        </div>
+        <div class="args-item">
+          <span class="name">timeout_sec</span>
+          <span class="type">integer</span>
+          <span class="default">30</span>
+          <span class="del">×</span>
+        </div>
+      </div>
+      <button class="add-row">+ Add input argument</button>
+      <div class="field" style="margin-top: 16px;">
+        <label>Attack command <span class="req">*</span></label>
+        <div class="editor"><span class="tok-c"># Stop and disable systemd unit</span>
+<span class="tok-cmd">sudo</span> systemctl stop <span class="tok-arg">#{service_name}</span>
+<span class="tok-cmd">sudo</span> systemctl disable <span class="tok-arg">#{service_name}</span>
+<span class="tok-cmd">sleep</span> <span class="tok-arg">#{timeout_sec}</span>
+<span class="tok-cmd">systemctl</span> <span class="tok-flag">is-enabled</span> <span class="tok-arg">#{service_name}</span> <span class="tok-flag">||</span> <span class="tok-cmd">echo</span> <span class="tok-str">"disabled"</span></div>
+      </div>
+    </div>
+
+    <div class="glass section">
+      <div class="section-header">
+        <div class="section-title">
+          <svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+          Lifecycle
+        </div>
+        <span class="section-meta">cleanup · dependencies</span>
+      </div>
+      <div class="field">
+        <label>Cleanup command</label>
+        <div class="editor" style="min-height: 60px;"><span class="tok-cmd">sudo</span> systemctl enable <span class="tok-arg">#{service_name}</span> <span class="tok-flag">&gt;/dev/null 2&gt;&amp;1</span>
+<span class="tok-cmd">sudo</span> systemctl start <span class="tok-arg">#{service_name}</span> <span class="tok-flag">&gt;/dev/null 2&gt;&amp;1</span></div>
+      </div>
+      <div class="field">
+        <label>Dependencies</label>
+        <button class="add-row">+ Add dependency</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: YAML pane -->
+  <aside class="glass yaml-pane">
+    <div class="yaml-head">
+      <div class="section-title">
+        <svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        YAML preview
+        <span class="errors-pill" style="margin-left: 8px;"><span class="dot"></span>0 errors</span>
+      </div>
+      <div class="yaml-actions">
+        <button class="icon-btn-glass-sm" title="Download"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+        <button class="icon-btn-glass-sm" title="Copy"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+        <button class="icon-btn-glass-sm" title="Reset"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+      </div>
+    </div>
+    <div class="yaml-body"><span class="yc"># Atomic test — Disable Splunk Forwarder (Linux)</span>
+<span class="yk">attack_technique</span>: <span class="ys">T1562.001</span>
+<span class="yk">display_name</span>: <span class="ys">Impair Defenses: Disable or Modify Tools</span>
+<span class="yk">atomic_tests</span>:
+  - <span class="yk">name</span>: <span class="ys">Disable Splunk Forwarder service (Linux)</span>
+    <span class="yk">description</span>: <span class="ys">|</span>
+      <span class="ys">Stops and disables the splunkforwarder
+      systemd unit on Linux.</span>
+    <span class="yk">supported_platforms</span>:
+      - <span class="ys">linux</span>
+    <span class="yk">input_arguments</span>:
+      <span class="yk">service_name</span>:
+        <span class="yk">type</span>: <span class="ys">string</span>
+        <span class="yk">default</span>: <span class="ys">SplunkForwarder</span>
+      <span class="yk">timeout_sec</span>:
+        <span class="yk">type</span>: <span class="ys">integer</span>
+        <span class="yk">default</span>: <span class="yn">30</span>
+    <span class="yk">executor</span>:
+      <span class="yk">name</span>: <span class="ys">bash</span>
+      <span class="yk">command</span>: <span class="ys">|</span>
+        <span class="ys">sudo systemctl stop </span><span class="ya">#{service_name}</span>
+        <span class="ys">sudo systemctl disable </span><span class="ya">#{service_name}</span>
+        <span class="ys">sleep </span><span class="ya">#{timeout_sec}</span>
+      <span class="yk">elevation_required</span>: <span class="ys">true</span>
+    <span class="yk">auto_generated_guid</span>: <span class="ys">22222222-3333-4444-8555-666666666666</span></div>
+  </aside>
+
+</main>
+
+<script>
+  function toggleTheme() {
+    const cur = document.documentElement.dataset.theme;
+    document.documentElement.dataset.theme = cur === 'dark' ? 'light' : 'dark';
+  }
+  document.getElementById('theme-toggle').addEventListener('click', (e) => { e.preventDefault(); toggleTheme(); });
+  document.getElementById('theme-toggle-btn').addEventListener('click', toggleTheme);
+</script>
+</body>
+</html>
