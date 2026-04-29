@@ -96,6 +96,16 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
                 variant={darkMode ? "outlined" : "contained"}
                 ref={anchorRef}
                 aria-label="Load attack test sample"
+                sx={{
+                    width: { xs: '100%', sm: 'auto' },
+                    '& > .MuiButton-root': {
+                        flex: { xs: 1, sm: 'initial' },
+                        whiteSpace: 'nowrap',
+                        textTransform: 'none',
+                        fontSize: { xs: 12, sm: 14 },
+                        px: { xs: 1, sm: 2 },
+                    },
+                }}
             >
                 <Button
                     aria-controls={open ? 'split-button-menu' : undefined}

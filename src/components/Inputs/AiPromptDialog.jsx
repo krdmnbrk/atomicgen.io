@@ -12,7 +12,6 @@ import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
-import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import CloudOffOutlinedIcon from '@mui/icons-material/CloudOffOutlined';
 import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded';
