@@ -16,11 +16,16 @@ import {
     Accordion,
     AccordionSummary,
     AccordionDetails,
+    Tooltip,
+    IconButton,
+    Link,
 } from '@mui/material';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import TerminalRoundedIcon from '@mui/icons-material/TerminalRounded';
 import CleaningServicesOutlinedIcon from '@mui/icons-material/CleaningServicesOutlined';
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
+import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
 import PropTypes from 'prop-types';
 import Arguments from './Inputs/Arguments';
 import Dependency from './Inputs/Dependency';
@@ -163,6 +168,43 @@ function Inputs({
         }));
     };
 
+    const handleStepsChange = (newValue) => {
+        setInputs((prev) => ({
+            ...prev,
+            executor: {
+                ...prev.executor,
+                steps: newValue.split(/\r?\n/).join('\n'),
+            },
+        }));
+    };
+
+    // RFC 4122 v4 UUID
+    const newUuidV4 = () => {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+            return window.crypto.randomUUID();
+        }
+        // Fallback
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+            const r = (Math.random() * 16) | 0;
+            const v = c === 'x' ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+        });
+    };
+
+    const regenerateGuid = () => {
+        setInputs((prev) => ({ ...prev, auto_generated_guid: newUuidV4() }));
+    };
+
+    const isManualExecutor = inputs.executor?.name === 'manual';
+    const techniqueAttackUrl = (() => {
+        const t = (inputs.attack_technique || '').trim();
+        if (!/^T\d{4}(\.\d{3})?$/i.test(t)) return null;
+        const [base, sub] = t.toUpperCase().split('.');
+        return sub
+            ? `https://attack.mitre.org/techniques/${base}/${sub}/`
+            : `https://attack.mitre.org/techniques/${base}/`;
+    })();
+
     const lifecycleHasContent =
         Boolean(inputs.executor?.cleanup_command) ||
         (Array.isArray(inputs.dependencies) && inputs.dependencies.length > 0);
@@ -204,12 +246,58 @@ function Inputs({
             {/* ─── IDENTITY ─── */}
             <Paper elevation={0} sx={glassSection}>
                 <SectionTitle icon={<InfoOutlinedIcon sx={{ fontSize: 16 }} />}>Identity</SectionTitle>
+                <Box sx={{ display: 'flex', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>
+                    <TextField
+                        required
+                        spellCheck="false"
+                        label="ATT&CK technique"
+                        placeholder="T1053.005"
+                        id="attack_technique"
+                        size="small"
+                        name="attack_technique"
+                        value={inputs.attack_technique || ''}
+                        onChange={handleChangeText}
+                        sx={{ ...inputSx, flex: '0 0 200px' }}
+                        InputProps={
+                            techniqueAttackUrl
+                                ? {
+                                      endAdornment: (
+                                          <Tooltip title="Open on attack.mitre.org">
+                                              <IconButton
+                                                  component="a"
+                                                  href={techniqueAttackUrl}
+                                                  target="_blank"
+                                                  rel="noopener"
+                                                  size="small"
+                                                  sx={{ color: 'primary.main' }}
+                                              >
+                                                  <OpenInNewRoundedIcon sx={{ fontSize: 16 }} />
+                                              </IconButton>
+                                          </Tooltip>
+                                      ),
+                                  }
+                                : undefined
+                        }
+                    />
+                    <TextField
+                        required
+                        spellCheck="false"
+                        label="Technique display name"
+                        placeholder="Scheduled Task/Job: Scheduled Task"
+                        id="display_name"
+                        size="small"
+                        name="display_name"
+                        value={inputs.display_name || ''}
+                        onChange={handleChangeText}
+                        sx={{ ...inputSx, flex: '1 1 280px' }}
+                    />
+                </Box>
                 <Box sx={{ mb: 2 }}>
                     <TextField
                         required
                         spellCheck="false"
                         fullWidth
-                        label="Atomic Name"
+                        label="Test name"
                         id="name"
                         size="small"
                         name="name"
@@ -224,8 +312,9 @@ function Inputs({
                         spellCheck="false"
                         fullWidth
                         multiline
-                        minRows={2}
-                        label="Atomic Description"
+                        minRows={3}
+                        label="Test description"
+                        placeholder="What does this test do? What artifact is left behind? How can a defender verify it ran?"
                         id="description"
                         name="description"
                         value={inputs.description || ''}
@@ -273,6 +362,46 @@ function Inputs({
                             ))}
                         </Select>
                     </FormControl>
+                </Box>
+                <Box
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        mt: 2,
+                        pt: 1.5,
+                        borderTop: '1px solid var(--glass-stroke)',
+                    }}
+                >
+                    <Typography
+                        sx={{
+                            fontSize: 10,
+                            fontWeight: 600,
+                            color: 'var(--text-faint)',
+                            letterSpacing: '0.10em',
+                            textTransform: 'uppercase',
+                        }}
+                    >
+                        GUID
+                    </Typography>
+                    <Typography
+                        sx={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: 11,
+                            color: inputs.auto_generated_guid ? 'text.secondary' : 'var(--text-faint)',
+                            flex: 1,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        {inputs.auto_generated_guid || 'not set — will be generated on first download'}
+                    </Typography>
+                    <Tooltip title={inputs.auto_generated_guid ? 'Regenerate GUID' : 'Generate GUID now'}>
+                        <IconButton size="small" onClick={regenerateGuid} sx={{ color: 'text.secondary' }}>
+                            <RefreshRoundedIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                    </Tooltip>
                 </Box>
             </Paper>
 
@@ -366,27 +495,59 @@ function Inputs({
                     />
                 </Box>
 
-                <Box>
-                    <Typography
-                        sx={{
-                            fontSize: 12,
-                            fontWeight: 500,
-                            color: 'text.secondary',
-                            mb: 0.75,
-                        }}
-                    >
-                        Attack command <Box component="span" sx={{ color: 'primary.main' }}>*</Box>
-                    </Typography>
-                    <Editor
-                        darkMode={darkMode}
-                        mode={inputs.executor.name === 'powershell' ? 'powershell' : 'sh'}
-                        name="attack-command-editor"
-                        value={inputs.executor.command || ''}
-                        height="160px"
-                        onChange={handleAttackCommandChange}
-                        placeholder={'Write an attack command / script'}
-                    />
-                </Box>
+                {isManualExecutor ? (
+                    <Box>
+                        <Typography
+                            sx={{
+                                fontSize: 12,
+                                fontWeight: 500,
+                                color: 'text.secondary',
+                                mb: 0.75,
+                                display: 'flex',
+                                alignItems: 'baseline',
+                                gap: 1,
+                            }}
+                        >
+                            Manual steps <Box component="span" sx={{ color: 'primary.main' }}>*</Box>
+                            <Typography component="span" sx={{ fontSize: 11, color: 'var(--text-faint)' }}>
+                                — markdown-style numbered or bulleted steps for the operator
+                            </Typography>
+                        </Typography>
+                        <Editor
+                            darkMode={darkMode}
+                            mode="markdown"
+                            name="manual-steps-editor"
+                            value={inputs.executor.steps || ''}
+                            height="200px"
+                            onChange={handleStepsChange}
+                            placeholder={
+                                '1. Open Settings → Privacy → ...\n2. Toggle X off\n3. Verify Y'
+                            }
+                        />
+                    </Box>
+                ) : (
+                    <Box>
+                        <Typography
+                            sx={{
+                                fontSize: 12,
+                                fontWeight: 500,
+                                color: 'text.secondary',
+                                mb: 0.75,
+                            }}
+                        >
+                            Attack command <Box component="span" sx={{ color: 'primary.main' }}>*</Box>
+                        </Typography>
+                        <Editor
+                            darkMode={darkMode}
+                            mode={inputs.executor.name === 'powershell' ? 'powershell' : 'sh'}
+                            name="attack-command-editor"
+                            value={inputs.executor.command || ''}
+                            height="160px"
+                            onChange={handleAttackCommandChange}
+                            placeholder={'Write an attack command / script'}
+                        />
+                    </Box>
+                )}
             </Paper>
 
             {/* ─── SETUP & CLEANUP (collapsible) ─── */}

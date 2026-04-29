@@ -53,13 +53,16 @@ export const TOOL_INPUT_SCHEMA = {
                             },
                             executor: {
                                 type: 'object',
+                                description:
+                                    'For executor.name=manual, set executor.steps (markdown) instead of executor.command.',
                                 properties: {
                                     name: { type: 'string', enum: executorEnum },
                                     command: { type: 'string' },
                                     cleanup_command: { type: 'string' },
+                                    steps: { type: 'string' },
                                     elevation_required: { type: 'boolean' },
                                 },
-                                required: ['name', 'command'],
+                                required: ['name'],
                             },
                             input_arguments: {
                                 type: 'object',

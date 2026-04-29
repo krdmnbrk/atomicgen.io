@@ -11,6 +11,7 @@ import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import TerminalRoundedIcon from '@mui/icons-material/TerminalRounded';
 import Editor from './Editor';
 
 const downloadStringAsFile = (filename, content) => {
@@ -25,30 +26,65 @@ const downloadStringAsFile = (filename, content) => {
   URL.revokeObjectURL(url);
 };
 
-const atomic_yaml = (inputs) => {
-  const atomic = {};
+// Build a single atomic_test object from the form inputs.
+// Drops the technique-level fields (attack_technique, display_name, auto_generated_guid)
+// because those are placed at the top-level wrapper.
+const atomic_test_from_inputs = (inputs) => {
+  const test = {};
+  const TECHNIQUE_FIELDS = new Set(['attack_technique', 'display_name', 'auto_generated_guid']);
   Object.keys(inputs).forEach((key) => {
+    if (TECHNIQUE_FIELDS.has(key)) return;
     if (key === 'input_arguments') {
-      atomic['input_arguments'] = {};
+      test['input_arguments'] = {};
       inputs.input_arguments.forEach((input) => {
-        atomic['input_arguments'][input.name] = {
+        if (!input.name) return;
+        test['input_arguments'][input.name] = {
           type: input['type'],
           default: input['default'],
           description: input['description'],
         };
       });
+    } else if (key === 'executor') {
+      // Drop executor sub-fields based on executor type.
+      const exec = { ...inputs.executor };
+      if (exec.name === 'manual') {
+        delete exec.command;
+        delete exec.cleanup_command;
+      } else {
+        delete exec.steps;
+      }
+      test['executor'] = exec;
     } else {
-      atomic[key] = inputs[key];
+      test[key] = inputs[key];
     }
   });
-  return atomic;
+  if (inputs.auto_generated_guid) {
+    test.auto_generated_guid = inputs.auto_generated_guid;
+  }
+  return test;
 };
 
+// Wrap a single atomic_test in the canonical Atomic Red Team technique-level shape.
+const buildTechniqueWrapper = (inputs) => {
+  return {
+    attack_technique: inputs.attack_technique || null,
+    display_name: inputs.display_name || null,
+    atomic_tests: [atomic_test_from_inputs(inputs)],
+  };
+};
+
+// Strip null/undefined and empty containers, but preserve intentionally-empty strings
+// (e.g. input_arguments[*].default = "") since AT corpus uses those.
 function cleanObject(obj) {
   if (Array.isArray(obj)) {
     return obj
       .map(cleanObject)
-      .filter((item) => item !== null && item !== undefined && !(Array.isArray(item) && item.length === 0));
+      .filter(
+        (item) =>
+          item !== null &&
+          item !== undefined &&
+          !(Array.isArray(item) && item.length === 0)
+      );
   } else if (typeof obj === 'object' && obj !== null) {
     const cleanedObject = {};
     for (const [key, value] of Object.entries(obj)) {
@@ -57,14 +93,34 @@ function cleanObject(obj) {
         cleanedValue !== null &&
         cleanedValue !== undefined &&
         !(Array.isArray(cleanedValue) && cleanedValue.length === 0) &&
-        !(typeof cleanedValue === 'object' && Object.keys(cleanedValue).length === 0)
+        !(typeof cleanedValue === 'object' && !Array.isArray(cleanedValue) && Object.keys(cleanedValue).length === 0)
       ) {
         cleanedObject[key] = cleanedValue;
       }
     }
     return cleanedObject;
   }
-  return obj === '' || obj === null || obj === undefined ? undefined : obj;
+  // null/undefined → drop. Empty strings are PRESERVED.
+  return obj === null || obj === undefined ? undefined : obj;
+}
+
+// Force `|` block scalar style for any multi-line string the YAML dumper encounters.
+// Without this js-yaml may emit folded or quoted forms that don't match AT corpus style.
+const yamlDumpOpts = {
+  lineWidth: -1,
+  noRefs: true,
+  styles: { '!!null': 'empty' },
+  // Per-key scalar style hints
+  replacer: undefined,
+};
+
+function dumpAtomicYaml(wrapper) {
+  return yaml.dump(wrapper, {
+    ...yamlDumpOpts,
+    // Prefer literal block scalar for any multi-line string
+    forceQuotes: false,
+    quotingType: '"',
+  });
 }
 
 function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErrors, setChanged, changed }) {
@@ -80,7 +136,19 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
   };
 
   useEffect(() => {
-    setFormattedYaml(yaml.dump([cleanObject(atomic_yaml(inputs))], { lineWidth: -1 }));
+    const wrapper = cleanObject(buildTechniqueWrapper(inputs));
+    // Post-process: force `|` block scalar for any multi-line string field.
+    setFormattedYaml(dumpAtomicYaml(wrapper).replace(
+      /^( *)([a-z_]+): "((?:[^"\\]|\\.)*\\n(?:[^"\\]|\\.)*)"$/gm,
+      (_, indent, key, body) => {
+        const decoded = body.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+        const inner = decoded
+          .split('\n')
+          .map((line) => indent + '  ' + line)
+          .join('\n');
+        return `${indent}${key}: |\n${inner}`;
+      }
+    ));
     if (validationErrors.length === 0) {
       setShowValidationErrors(false);
     }
@@ -107,6 +175,25 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
     }
     const filename = inputs.name.replace(/ /g, '_').toLowerCase() + '.yaml';
     downloadStringAsFile(filename, formatted_yaml);
+  };
+
+  const [copiedSnippet, setCopiedSnippet] = React.useState(false);
+  const invokeAtomicSnippet = (() => {
+    const tid = (inputs.attack_technique || '').trim();
+    const guid = (inputs.auto_generated_guid || '').trim();
+    if (!tid) return null;
+    if (guid) return `Invoke-AtomicTest ${tid} -TestGuids ${guid}`;
+    return `Invoke-AtomicTest ${tid}`;
+  })();
+  const copyInvokeSnippet = async () => {
+    if (!invokeAtomicSnippet) return;
+    try {
+      await navigator.clipboard.writeText(invokeAtomicSnippet);
+      setCopiedSnippet(true);
+      setTimeout(() => setCopiedSnippet(false), 2000);
+    } catch {
+      /* ignore */
+    }
   };
 
   const copyButtonHandler = async () => {
@@ -198,6 +285,7 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
             <DescriptionOutlinedIcon sx={{ fontSize: 16, color: 'primary.main' }} />
             YAML preview
           </Box>
+          {showContent && (
           <Box
             sx={{
               display: 'inline-flex',
@@ -227,11 +315,36 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
             />
             {hasErrors ? `${errorCount} error${errorCount === 1 ? '' : 's'}` : '0 errors'}
           </Box>
+          )}
         </Box>
         <Box sx={{ display: 'flex', gap: 0.5 }}>
+          <Tooltip
+            title={
+              copiedSnippet
+                ? 'Copied!'
+                : invokeAtomicSnippet
+                ? `Copy: ${invokeAtomicSnippet}`
+                : 'Set ATT&CK technique to enable Invoke-AtomicTest snippet'
+            }
+          >
+            <span>
+              <IconButton
+                disabled={!invokeAtomicSnippet}
+                onClick={copyInvokeSnippet}
+                sx={iconBtnSx}
+                aria-label="Copy Invoke-AtomicTest snippet"
+              >
+                {copiedSnippet ? (
+                  <CheckRoundedIcon sx={{ fontSize: 16, color: 'success.main' }} />
+                ) : (
+                  <TerminalRoundedIcon sx={{ fontSize: 16 }} />
+                )}
+              </IconButton>
+            </span>
+          </Tooltip>
           <Tooltip title={`Download${changed ? ' *' : ''}`}>
             <span>
-              <IconButton disabled={!showContent} onClick={downloadButtonHandle} sx={iconBtnSx}>
+              <IconButton disabled={!showContent} onClick={downloadButtonHandle} sx={iconBtnSx} aria-label="Download YAML">
                 <DownloadRoundedIcon sx={{ fontSize: 16 }} />
               </IconButton>
             </span>
@@ -292,15 +405,88 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
               flexDirection: 'column',
               justifyContent: 'center',
               alignItems: 'center',
-              minHeight: 300,
-              gap: 1,
-              opacity: 0.7,
+              minHeight: 320,
+              gap: 2,
+              p: 2,
             }}
           >
-            <DescriptionOutlinedIcon sx={{ fontSize: 36, color: 'var(--text-faint)' }} />
-            <Typography sx={{ fontSize: 14, color: 'text.secondary' }}>
-              Fill in the form to generate YAML
-            </Typography>
+            <Box sx={{ textAlign: 'center', maxWidth: 360 }}>
+              <DescriptionOutlinedIcon
+                sx={{ fontSize: 36, color: 'var(--text-faint)', mb: 1 }}
+              />
+              <Typography
+                sx={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: 'text.secondary',
+                  letterSpacing: '0.10em',
+                  textTransform: 'uppercase',
+                  mb: 0.5,
+                }}
+              >
+                Get started
+              </Typography>
+              <Typography sx={{ fontSize: 15, color: 'text.primary', mb: 2 }}>
+                Author Atomic Red Team tests, fast.
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '100%', maxWidth: 360 }}>
+              {[
+                {
+                  num: '1',
+                  title: 'Describe a test in plain English',
+                  hint: 'AI bar above — type what you want, refine until it fits.',
+                },
+                {
+                  num: '2',
+                  title: 'Browse existing atomic-red-team tests',
+                  hint: 'Load any T-ID and adapt it to your environment.',
+                },
+                {
+                  num: '3',
+                  title: 'Author from scratch',
+                  hint: 'Fill the form below; YAML appears here as you type.',
+                },
+              ].map((step) => (
+                <Box
+                  key={step.num}
+                  sx={{
+                    display: 'flex',
+                    gap: 1.5,
+                    alignItems: 'flex-start',
+                    p: 1.5,
+                    background: 'var(--glass-inset)',
+                    border: '1px solid var(--glass-stroke)',
+                    borderRadius: 2,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: '50%',
+                      background: 'var(--accent-soft)',
+                      color: 'primary.main',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      display: 'grid',
+                      placeItems: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {step.num}
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontSize: 13, fontWeight: 500, color: 'text.primary' }}>
+                      {step.title}
+                    </Typography>
+                    <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.25 }}>
+                      {step.hint}
+                    </Typography>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
           </Box>
         )}
       </Box>

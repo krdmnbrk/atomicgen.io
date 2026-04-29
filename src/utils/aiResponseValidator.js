@@ -31,7 +31,12 @@ function validateOneTest(t) {
     if (!exec.name || !EXECUTORS.has(exec.name)) {
         errors.push(`executor.name must be one of ${[...EXECUTORS].join(', ')}.`);
     }
-    if (!exec.command || typeof exec.command !== 'string' || exec.command.trim() === '') {
+    // Manual executor uses `steps` (markdown), all others require `command`.
+    if (exec.name === 'manual') {
+        if (!exec.steps || typeof exec.steps !== 'string' || exec.steps.trim() === '') {
+            errors.push('executor.steps missing or empty (required for manual executor).');
+        }
+    } else if (!exec.command || typeof exec.command !== 'string' || exec.command.trim() === '') {
         errors.push('executor.command missing or empty.');
     }
 
@@ -39,9 +44,20 @@ function validateOneTest(t) {
         if (WINDOWS_EXEC.has(exec.name) && !platforms.includes('windows')) {
             errors.push(`Executor ${exec.name} requires windows in supported_platforms.`);
         }
-        if (POSIX_EXEC.has(exec.name) && platforms.includes('windows') && platforms.length === 1) {
-            errors.push(`Executor ${exec.name} is not compatible with windows-only platforms.`);
+        // FIX: drop length===1 — bash/sh on a [windows, linux] mix is also wrong.
+        if (POSIX_EXEC.has(exec.name) && platforms.includes('windows')) {
+            errors.push(`Executor ${exec.name} is not compatible with windows in supported_platforms.`);
         }
+    }
+
+    // Flag wrong placeholder syntaxes
+    const wrongPlaceholderRe = /(\$\{[A-Za-z0-9_]+\}|\{\{[A-Za-z0-9_]+\}\}|%[A-Za-z0-9_]+%)/g;
+    for (const cmdField of ['command', 'cleanup_command', 'steps']) {
+        const v = exec[cmdField];
+        if (typeof v === 'string' && wrongPlaceholderRe.test(v)) {
+            errors.push(`${cmdField} uses non-AT placeholder syntax — use #{name} only.`);
+        }
+        wrongPlaceholderRe.lastIndex = 0;
     }
 
     const inputArgs = t.input_arguments && typeof t.input_arguments === 'object' ? t.input_arguments : {};

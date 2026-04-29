@@ -176,7 +176,7 @@ function Arguments({ darkMode, errors, setErrors, inputs, setInputs }) {
                                     handleInputArgumentChange(index, 'type', e.target.value)
                                 }
                             >
-                                {['string', 'url', 'path', 'integer'].map((type) => (
+                                {['string', 'url', 'path', 'integer', 'float'].map((type) => (
                                     <MenuItem key={type} value={type}>
                                         {type}
                                     </MenuItem>

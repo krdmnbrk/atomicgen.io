@@ -9,6 +9,10 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
 import Link from '@mui/material/Link';
+import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
+import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
 import { PROVIDER_LIST } from '../../utils/llm';
 
 export default function AiSettingsDialog({
@@ -24,14 +28,53 @@ export default function AiSettingsDialog({
     provider,
 }) {
     const [draftKey, setDraftKey] = React.useState(apiKey);
+    const [testing, setTesting] = React.useState(false);
+    const [testResult, setTestResult] = React.useState(null); // { ok: bool, message }
 
     React.useEffect(() => {
         setDraftKey(apiKey);
+        setTestResult(null);
     }, [apiKey, providerId, open]);
 
     const handleSave = () => {
         setApiKey(draftKey.trim());
         onClose();
+    };
+
+    const handleTestKey = async () => {
+        const trimmed = draftKey.trim();
+        if (!trimmed) {
+            setTestResult({ ok: false, message: 'Enter an API key first.' });
+            return;
+        }
+        setTesting(true);
+        setTestResult(null);
+        try {
+            // Lightweight ping: send a 1-token request via the provider's generate path.
+            // We catch any error and infer key validity from the failure mode.
+            await provider.generate({
+                apiKey: trimmed,
+                model,
+                systemPrompt: 'Respond with the tool call only.',
+                indexBlock: '',
+                userPrompt: 'ping',
+                signal: undefined,
+            });
+            setTestResult({ ok: true, message: 'Key is valid — connection successful.' });
+        } catch (e) {
+            const msg = (e && e.message) || 'Unknown error';
+            // Heuristic: 401/Invalid key → bad key; network/overload → key may still be fine
+            if (/invalid|unauthor|401/i.test(msg)) {
+                setTestResult({ ok: false, message: msg });
+            } else if (e?.code === 'NETWORK_BLOCKED') {
+                setTestResult({ ok: false, message: `Network blocked — ${msg}` });
+            } else {
+                // Reached the model / produced any response → key is valid
+                setTestResult({ ok: true, message: 'Key reached the API successfully.' });
+            }
+        } finally {
+            setTesting(false);
+        }
     };
 
     return (
@@ -73,7 +116,7 @@ export default function AiSettingsDialog({
                     <TextField
                         label={`${provider.name} API key`}
                         value={draftKey}
-                        onChange={(e) => setDraftKey(e.target.value)}
+                        onChange={(e) => { setDraftKey(e.target.value); setTestResult(null); }}
                         placeholder={provider.apiKeyHint}
                         type="password"
                         fullWidth
@@ -87,10 +130,50 @@ export default function AiSettingsDialog({
                             </>
                         }
                     />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={handleTestKey}
+                            disabled={!draftKey.trim() || testing}
+                            startIcon={
+                                testing ? (
+                                    <CircularProgress size={14} sx={{ color: 'inherit' }} />
+                                ) : testResult?.ok ? (
+                                    <CheckRoundedIcon sx={{ fontSize: 16, color: 'success.main' }} />
+                                ) : testResult && !testResult.ok ? (
+                                    <ErrorOutlineRoundedIcon sx={{ fontSize: 16, color: 'error.main' }} />
+                                ) : null
+                            }
+                            sx={{ textTransform: 'none', borderRadius: 1.5, flexShrink: 0 }}
+                        >
+                            {testing ? 'Testing…' : 'Test API key'}
+                        </Button>
+                        {testResult && (
+                            <Box
+                                sx={{
+                                    fontSize: 12,
+                                    color: testResult.ok ? 'success.main' : 'error.main',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                }}
+                                title={testResult.message}
+                            >
+                                {testResult.message}
+                            </Box>
+                        )}
+                    </Box>
                 </Stack>
             </DialogContent>
             <DialogActions>
-                <Button color="warning" onClick={() => { clearKey(); setDraftKey(''); }}>
+                <Button
+                    color="warning"
+                    onClick={() => {
+                        const ok = window.confirm('Remove API key from this browser?');
+                        if (ok) { clearKey(); setDraftKey(''); setTestResult(null); }
+                    }}
+                >
                     Clear key
                 </Button>
                 <Button onClick={onClose}>Cancel</Button>

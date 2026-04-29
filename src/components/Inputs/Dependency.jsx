@@ -127,19 +127,19 @@ function Dependency({ darkMode, inputs, setInputs, executor_names }) {
                         disableTouchListener
                         sx={{ mr: 1 }}
                         arrow
-                        title="Dependency executor will be inherited by attack executor if not selected"
+                        title="Required when dependencies exist. Invoke-AtomicTest does NOT inherit the attack executor — pick one explicitly."
                         placement='top'
                     >
                         <InfoIcon onClick={handleTooltipOpen} />
                     </Tooltip>
                 </ClickAwayListener>
-                <FormControl size="small" sx={{ width: "60%" }}>
-                    <InputLabel id="dependency_executor" style={{ fontSize: 14 }}>Dependency Executor</InputLabel>
+                <FormControl required size="small" sx={{ width: "60%" }}>
+                    <InputLabel id="dependency_executor" style={{ fontSize: 14 }}>Dependency Executor *</InputLabel>
                     <Select
                         labelId="dependency_executor"
                         id="dependency_executor_select"
                         value={inputs.dependency_executor_name}
-                        label="Dependency Executor"
+                        label="Dependency Executor *"
                         onChange={handleChangeDependencyExecutorType}
                     >
                         <MenuItem value="">None</MenuItem>

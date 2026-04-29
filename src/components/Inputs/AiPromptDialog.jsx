@@ -10,6 +10,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import LinearProgress from '@mui/material/LinearProgress';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
@@ -20,6 +21,109 @@ import { validateGeneratedTest, toAppFormShape } from '../../utils/aiResponseVal
 
 const MAX_PROMPT_LEN = 2000;
 const MAX_REFINE_LEN = 500;
+
+// ─── Minimal YAML colorizer ────────────────────────────────────────────────
+const yamlColors = {
+    key: '#6FA9FF',
+    str: '#4DDD96',
+    num: '#F5B74E',
+    ph: 'var(--accent)',
+    faint: '#6B7480',
+};
+
+function withPlaceholders(text, baseKey = 'p') {
+    if (typeof text !== 'string' || !text.includes('#{')) return text;
+    const parts = text.split(/(#\{[^}]+\})/g);
+    return parts.map((p, i) =>
+        /^#\{[^}]+\}$/.test(p) ? (
+            <span key={`${baseKey}-${i}`} style={{ color: yamlColors.ph, fontWeight: 500 }}>
+                {p}
+            </span>
+        ) : (
+            p
+        )
+    );
+}
+
+function colorYamlValue(value) {
+    if (!value) return value;
+    const trimmed = value.trim();
+    // Block scalar markers (|, |-, >, >+, etc.)
+    if (/^([|>][+-]?)\s*$/.test(value)) {
+        return <span style={{ color: yamlColors.faint }}>{value}</span>;
+    }
+    // Quoted string
+    const sq = value.match(/^(['"])(.*)\1\s*$/);
+    if (sq) {
+        return (
+            <span style={{ color: yamlColors.str }}>
+                {sq[1]}
+                {withPlaceholders(sq[2], 'sq')}
+                {sq[1]}
+            </span>
+        );
+    }
+    // Number / bool / null
+    if (/^-?\d+(\.\d+)?$/.test(trimmed) || /^(true|false|null)$/.test(trimmed)) {
+        return <span style={{ color: yamlColors.num }}>{value}</span>;
+    }
+    // Plain unquoted string
+    return <span style={{ color: yamlColors.str }}>{withPlaceholders(value, 'pl')}</span>;
+}
+
+function colorYamlLine(line, key) {
+    if (!line) return <React.Fragment key={key}>{''}</React.Fragment>;
+    // Comment line
+    const cm = line.match(/^(\s*)(#.*)$/);
+    if (cm) {
+        return (
+            <React.Fragment key={key}>
+                {cm[1]}
+                <span style={{ color: yamlColors.faint, fontStyle: 'italic' }}>{cm[2]}</span>
+            </React.Fragment>
+        );
+    }
+    // List item with key (e.g. "  - name: foo") OR plain "key: value"
+    const m = line.match(/^(\s*(?:-\s+)?)([a-zA-Z_][\w-]*)(\s*:)(\s*)(.*)$/);
+    if (m) {
+        return (
+            <React.Fragment key={key}>
+                {m[1]}
+                <span style={{ color: yamlColors.key }}>{m[2]}</span>
+                {m[3]}
+                {m[4]}
+                {colorYamlValue(m[5])}
+            </React.Fragment>
+        );
+    }
+    // List item without key (e.g. "  - windows")
+    const dashed = line.match(/^(\s*-\s+)(.*)$/);
+    if (dashed) {
+        return (
+            <React.Fragment key={key}>
+                {dashed[1]}
+                {colorYamlValue(dashed[2])}
+            </React.Fragment>
+        );
+    }
+    // Block scalar continuation — color as plain string
+    return <React.Fragment key={key}>{colorYamlValue(line)}</React.Fragment>;
+}
+
+function ColorizedYaml({ text }) {
+    if (!text) return null;
+    const lines = text.split('\n');
+    return (
+        <>
+            {lines.map((line, i) => (
+                <React.Fragment key={i}>
+                    {colorYamlLine(line, i)}
+                    {i < lines.length - 1 ? '\n' : ''}
+                </React.Fragment>
+            ))}
+        </>
+    );
+}
 
 function buildInitialPrompt(trimmed) {
     return (
@@ -72,6 +176,7 @@ export default function AiPromptDialog({
     const [refineOpen, setRefineOpen] = React.useState(false);
     const [refineText, setRefineText] = React.useState('');
     const abortRef = React.useRef(null);
+    const isMobile = useMediaQuery('(max-width: 600px)');
 
     const currentVersion = versions[activeVersion] || null;
     const result = currentVersion?.data || null;
@@ -277,10 +382,11 @@ export default function AiPromptDialog({
             onClose={busy ? undefined : onClose}
             fullWidth
             maxWidth="md"
+            fullScreen={isMobile}
             slotProps={{
                 paper: {
                     sx: {
-                        borderRadius: 3,
+                        borderRadius: isMobile ? 0 : 3,
                         overflow: 'hidden',
                         display: 'flex',
                         flexDirection: 'column',
@@ -303,6 +409,7 @@ export default function AiPromptDialog({
                     component="input"
                     type="text"
                     autoFocus
+                    aria-label="AI test prompt"
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder="Describe a test to generate…"
@@ -320,6 +427,7 @@ export default function AiPromptDialog({
                         py: 2,
                         '&::placeholder': { color: 'var(--text-faint)' },
                         '&:disabled': { opacity: 0.6 },
+                        '&:focus-visible': { outline: 'none' },
                     }}
                 />
                 <Tooltip title={`Provider: ${settings.provider.name} · click to change`} placement="bottom">
@@ -368,15 +476,6 @@ export default function AiPromptDialog({
                 >
                     {prompt.length}/{MAX_PROMPT_LEN}
                 </Typography>
-                <Tooltip title="AI provider settings">
-                    <IconButton
-                        size="small"
-                        onClick={onOpenSettings}
-                        sx={{ mr: 0.5, color: 'text.secondary' }}
-                    >
-                        <TuneRoundedIcon sx={{ fontSize: 18 }} />
-                    </IconButton>
-                </Tooltip>
                 <Tooltip title="Close">
                     <IconButton
                         size="small"
@@ -402,56 +501,32 @@ export default function AiPromptDialog({
                 />
             )}
 
-            {/* ─── Status row (only when result exists) ─── */}
+            {/* ─── Status caption (compact, above YAML, only when result exists) ─── */}
             {result && (
                 <Box
                     sx={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 1.5,
+                        gap: 1,
                         px: 2,
-                        py: 1,
+                        py: 0.75,
                         borderBottom: '1px solid var(--glass-stroke)',
-                        background: 'rgba(0, 0, 0, 0.18)',
+                        background: 'rgba(0, 0, 0, 0.10)',
                         fontFamily: "'JetBrains Mono', monospace",
                         fontSize: 11,
                         color: 'text.secondary',
                         flexWrap: 'wrap',
                     }}
                 >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0 }}>
-                        <Box sx={{ color: 'primary.main', fontWeight: 500 }}>{result.attack_technique}</Box>
-                        <Box sx={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--text-faint)' }} />
-                        <Box sx={{ color: 'text.primary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {result.display_name}
-                        </Box>
-                        {tests.length > 1 && (
-                            <>
-                                <Box sx={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--text-faint)' }} />
-                                <Box>{tests.length} variants</Box>
-                            </>
-                        )}
+                    <Box sx={{ color: 'primary.main', fontWeight: 500, flexShrink: 0 }}>
+                        {result.attack_technique}
                     </Box>
-                    <Box
-                        sx={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 0.75,
-                            color: errorCount > 0 ? 'error.main' : 'success.main',
-                        }}
-                    >
-                        <Box
-                            sx={{
-                                width: 6,
-                                height: 6,
-                                borderRadius: '50%',
-                                background: errorCount > 0 ? 'error.main' : 'success.main',
-                                boxShadow: `0 0 6px ${errorCount > 0 ? '#E5484D' : '#4DDD96'}`,
-                            }}
-                        />
-                        {errorCount > 0
-                            ? `${errorCount} error${errorCount === 1 ? '' : 's'}`
-                            : '0 errors'}
+                    <Box sx={{ color: 'text.primary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }} title={result.display_name}>
+                        {result.display_name}
+                    </Box>
+                    <Box sx={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 0.75, color: errorCount > 0 ? 'error.main' : 'success.main' }}>
+                        <Box sx={{ width: 6, height: 6, borderRadius: '50%', background: errorCount > 0 ? 'error.main' : 'success.main', boxShadow: `0 0 6px ${errorCount > 0 ? '#E5484D' : '#4DDD96'}` }} />
+                        {errorCount > 0 ? `${errorCount} error${errorCount === 1 ? '' : 's'}` : '0 errors'}
                     </Box>
                 </Box>
             )}
@@ -482,6 +557,8 @@ export default function AiPromptDialog({
                         Versions
                     </Typography>
                     <Box
+                        role="tablist"
+                        aria-label="Generation versions"
                         sx={{
                             display: 'inline-flex',
                             background: 'rgba(0, 0, 0, 0.3)',
@@ -503,6 +580,9 @@ export default function AiPromptDialog({
                                 <Tooltip key={i} title={tip} placement="top">
                                     <Box
                                         component="button"
+                                        role="tab"
+                                        aria-selected={active}
+                                        aria-label={tip}
                                         onClick={() => {
                                             setActiveVersion(i);
                                             setActiveIdx(0);
@@ -529,6 +609,10 @@ export default function AiPromptDialog({
                                             '&:hover': {
                                                 color: active ? 'primary.main' : 'text.primary',
                                                 background: active ? 'var(--accent-soft)' : 'rgba(255,255,255,0.04)',
+                                            },
+                                            '&:focus-visible': {
+                                                outline: '2px solid var(--accent)',
+                                                outlineOffset: 1,
                                             },
                                         }}
                                     >
@@ -576,6 +660,8 @@ export default function AiPromptDialog({
                 >
                     {tests.length > 1 ? (
                         <Box
+                            role="tablist"
+                            aria-label="Platform variants"
                             sx={{
                                 display: 'inline-flex',
                                 background: 'rgba(0, 0, 0, 0.3)',
@@ -593,6 +679,8 @@ export default function AiPromptDialog({
                                     <Box
                                         key={i}
                                         component="button"
+                                        role="tab"
+                                        aria-selected={active}
                                         onClick={() => setActiveIdx(i)}
                                         sx={{
                                             background: active ? 'var(--accent-soft)' : 'transparent',
@@ -611,6 +699,10 @@ export default function AiPromptDialog({
                                             transition: 'all 0.12s',
                                             '&:hover': {
                                                 color: active ? 'primary.main' : 'text.primary',
+                                            },
+                                            '&:focus-visible': {
+                                                outline: '2px solid var(--accent)',
+                                                outlineOffset: 1,
                                             },
                                         }}
                                     >
@@ -848,7 +940,7 @@ export default function AiPromptDialog({
                         {yamlBlocks ? (
                             <>
                                 <Box component="span" sx={{ display: 'block', px: 2.5, pt: 2 }}>
-                                    {yamlBlocks.headerYaml}
+                                    <ColorizedYaml text={yamlBlocks.headerYaml} />
                                 </Box>
                                 {yamlBlocks.testYamls.map((y, i) => {
                                     const active = i === activeIdx && yamlBlocks.testYamls.length > 1;
@@ -873,7 +965,7 @@ export default function AiPromptDialog({
                                                 transition: 'opacity 150ms, background-color 150ms',
                                             })}
                                         >
-                                            {y}
+                                            <ColorizedYaml text={y} />
                                         </Box>
                                     );
                                 })}
@@ -881,12 +973,14 @@ export default function AiPromptDialog({
                             </>
                         ) : (
                             <Box component="span" sx={{ display: 'block', p: 2.5 }}>
-                                {fallbackYaml}
+                                <ColorizedYaml text={fallbackYaml} />
                             </Box>
                         )}
 
                         {busy && busyMode === 'refine' && (
                             <Box
+                                role="status"
+                                aria-live="polite"
                                 sx={{
                                     position: 'absolute',
                                     inset: 0,

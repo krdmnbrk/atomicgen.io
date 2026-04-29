@@ -13,6 +13,7 @@ const executor_names = [
   "command_prompt",
   "bash",
   "sh",
+  "manual",
 ];
 
 const supported_platforms = [
@@ -30,8 +31,10 @@ const supported_platforms = [
   "IaaS:aws",
 ].map((name) => name.toLowerCase());
 
-// Base Inputs
+// Base Inputs — full Atomic Red Team technique-level shape
 const base = {
+  attack_technique: null,
+  display_name: null,
   name: null,
   description: null,
   supported_platforms: [],
@@ -41,15 +44,19 @@ const base = {
   executor: {
     command: null,
     cleanup_command: null,
+    steps: null,
     name: "",
     elevation_required: false,
   },
+  auto_generated_guid: null,
 };
 
 // Validation Rules
 const validationRules = {
-  name: { required: true, errorMessage: 'Atomic name' },
-  description: { required: true, errorMessage: 'Atomic description' },
+  attack_technique: { required: true, errorMessage: 'MITRE ATT&CK technique (T####)' },
+  display_name: { required: true, errorMessage: 'Technique display name' },
+  name: { required: true, errorMessage: 'Test name' },
+  description: { required: true, errorMessage: 'Test description' },
   supported_platforms: { required: true, errorMessage: 'Supported platforms' },
   input_arguments: {
     required: false,

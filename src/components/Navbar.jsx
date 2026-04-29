@@ -12,6 +12,8 @@ import {
   Link,
 } from '@mui/material';
 import LaunchIcon from '@mui/icons-material/Launch';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import Tooltip from '@mui/material/Tooltip';
 import {
   GitHub as GitHubIcon,
   LightMode as LightModeIcon,
@@ -96,6 +98,33 @@ function Navbar({ darkMode, setDarkMode }) {
             gap: 0.5,
           }}
         >
+          <Tooltip
+            title="atomicgen.io has no backend. AI keys (BYOK) and prompts stay in your browser; nothing is logged or proxied."
+            placement="bottom"
+          >
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 0.75,
+                px: 1.25,
+                py: 0.5,
+                borderRadius: 1.5,
+                border: '1px solid var(--glass-stroke)',
+                background: 'var(--glass-strong)',
+                color: 'success.main',
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                fontFamily: "'JetBrains Mono', monospace",
+                mr: 1.5,
+              }}
+            >
+              <LockOutlinedIcon sx={{ fontSize: 13 }} />
+              BYOK · no backend
+            </Box>
+          </Tooltip>
           <Button
             color="inherit"
             aria-controls="useful-links-menu"
