@@ -74,6 +74,7 @@ export default function UploadedAtomicSelection({
           maxHeight: { xs: '85vh', sm: '64vh' },
           overflow: 'hidden',
           display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr)',
           gridTemplateRows: 'auto 1fr',
           borderRadius: 3,
         },
@@ -99,7 +100,7 @@ export default function UploadedAtomicSelection({
         )}
 
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
             {techniqueId && (
               <Box
                 component="span"
@@ -113,6 +114,7 @@ export default function UploadedAtomicSelection({
                   px: 1,
                   py: 0.25,
                   fontWeight: 500,
+                  flexShrink: 0,
                 }}
               >
                 {techniqueId}

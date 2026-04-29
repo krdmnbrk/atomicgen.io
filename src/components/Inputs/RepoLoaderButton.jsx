@@ -233,6 +233,7 @@ export default function RepoLoaderButton({
                         maxHeight: { xs: '85vh', sm: '64vh' },
                         overflow: 'hidden',
                         display: 'grid',
+                        gridTemplateColumns: 'minmax(0, 1fr)',
                         gridTemplateRows: 'auto 1fr',
                         borderRadius: 3,
                     },
@@ -242,29 +243,43 @@ export default function RepoLoaderButton({
                 <Box
                     sx={{
                         display: 'flex',
-                        alignItems: 'center',
-                        gap: 1.5,
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        alignItems: { xs: 'stretch', sm: 'center' },
+                        gap: { xs: 1, sm: 1.5 },
                         px: { xs: 1.75, sm: 2.5 },
                         py: 1.5,
                         borderBottom: '1px solid var(--glass-stroke)',
                     }}
                 >
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography sx={{ fontSize: 15, fontWeight: 600, lineHeight: 1.2 }}>
-                            Browse atomic-red-team
-                        </Typography>
-                        <Typography
-                            sx={{
-                                fontSize: 11,
-                                color: 'var(--text-faint)',
-                                fontFamily: "'JetBrains Mono', monospace",
-                                mt: 0.25,
-                            }}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography sx={{ fontSize: 15, fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                Browse atomic-red-team
+                            </Typography>
+                            <Typography
+                                sx={{
+                                    fontSize: 11,
+                                    color: 'var(--text-faint)',
+                                    fontFamily: "'JetBrains Mono', monospace",
+                                    mt: 0.25,
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                }}
+                            >
+                                {indexLoading
+                                    ? 'Loading index…'
+                                    : `${tacticGroups.length} tactics · ${totalTests.toLocaleString()} atomic tests`}
+                            </Typography>
+                        </Box>
+                        <IconButton
+                            size="small"
+                            onClick={handleClose}
+                            sx={{ flexShrink: 0, display: { xs: 'inline-flex', sm: 'none' } }}
+                            aria-label="Close"
                         >
-                            {indexLoading
-                                ? 'Loading index…'
-                                : `${tacticGroups.length} tactics · ${totalTests.toLocaleString()} atomic tests`}
-                        </Typography>
+                            <CloseRoundedIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
                     </Box>
 
                     <Box
@@ -277,7 +292,7 @@ export default function RepoLoaderButton({
                             borderRadius: 2,
                             px: 1.5,
                             py: 0.75,
-                            width: { xs: 140, sm: 240 },
+                            width: { xs: '100%', sm: 240 },
                             flexShrink: 0,
                             transition: 'border-color 0.14s, box-shadow 0.14s',
                             '&:focus-within': {
@@ -291,7 +306,7 @@ export default function RepoLoaderButton({
                             component="input"
                             value={filter}
                             onChange={(e) => setFilter(e.target.value)}
-                            placeholder="Filter…"
+                            placeholder="Search T-ID, technique, or atomic test…"
                             disabled={indexLoading || loadingYaml}
                             sx={{
                                 flex: 1,
@@ -308,7 +323,12 @@ export default function RepoLoaderButton({
                         />
                     </Box>
 
-                    <IconButton size="small" onClick={handleClose} sx={{ flexShrink: 0 }} aria-label="Close">
+                    <IconButton
+                        size="small"
+                        onClick={handleClose}
+                        sx={{ flexShrink: 0, display: { xs: 'none', sm: 'inline-flex' } }}
+                        aria-label="Close"
+                    >
                         <CloseRoundedIcon sx={{ fontSize: 18 }} />
                     </IconButton>
                 </Box>
@@ -453,10 +473,10 @@ export default function RepoLoaderButton({
                                         role="button"
                                         sx={{
                                             display: 'grid',
-                                            gridTemplateColumns: '92px 1fr auto',
-                                            gap: 1.5,
+                                            gridTemplateColumns: { xs: '74px 1fr auto', sm: '92px 1fr auto' },
+                                            gap: { xs: 1, sm: 1.5 },
                                             alignItems: 'center',
-                                            px: 1.5,
+                                            px: { xs: 1, sm: 1.5 },
                                             py: 1.25,
                                             borderRadius: 1.5,
                                             mb: 0.5,
@@ -492,6 +512,7 @@ export default function RepoLoaderButton({
                                                 {tech.name}
                                             </Typography>
                                             <Typography
+                                                component="div"
                                                 sx={{
                                                     fontSize: 11,
                                                     color: 'var(--text-faint)',
@@ -500,6 +521,10 @@ export default function RepoLoaderButton({
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     gap: 0.75,
+                                                    minWidth: 0,
+                                                    overflow: 'hidden',
+                                                    whiteSpace: 'nowrap',
+                                                    textOverflow: 'ellipsis',
                                                 }}
                                             >
                                                 {filter && (
@@ -509,6 +534,7 @@ export default function RepoLoaderButton({
                                                             display: 'inline-flex',
                                                             alignItems: 'center',
                                                             gap: 0.5,
+                                                            flexShrink: 0,
                                                         }}
                                                     >
                                                         <Box
@@ -525,7 +551,17 @@ export default function RepoLoaderButton({
                                                         <Box component="span" sx={{ color: 'var(--text-faint)', mx: 0.25 }}>·</Box>
                                                     </Box>
                                                 )}
-                                                {Array.from(tech.executors || []).slice(0, 2).join(' · ') || '—'}
+                                                <Box
+                                                    component="span"
+                                                    sx={{
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap',
+                                                        minWidth: 0,
+                                                    }}
+                                                >
+                                                    {Array.from(tech.executors || []).slice(0, 2).join(' · ') || '—'}
+                                                </Box>
                                             </Typography>
                                             {tech.testHits && tech.testHits.length > 0 && (
                                                 <Typography
