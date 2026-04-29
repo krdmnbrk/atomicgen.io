@@ -78,21 +78,36 @@ function Dependency({ darkMode, inputs, setInputs, executor_names }) {
     };
 
     return (
-        <Box sx={{ mb: 2 }}>
+        <Box>
             {/* Section title */}
-            <Typography variant="subtitle1" gutterBottom>
+            <Typography
+                sx={{
+                    fontSize: 12,
+                    fontWeight: 500,
+                    color: 'text.secondary',
+                    mb: 0.75,
+                }}
+            >
                 Dependencies
             </Typography>
 
             {/* Button to add a new dependency */}
-            <Box sx={{ mt: 1, mb: 1 }}>
-                <Button 
-                    startIcon={<AddCircleOutlineIcon />} 
-                    sx={{ mr: 2, mb: 1 }} 
-                    variant={darkMode ? "outlined" : "contained"} 
+            <Box sx={{ mb: 1 }}>
+                <Button
+                    startIcon={<AddCircleOutlineIcon />}
+                    sx={{
+                        mr: 2,
+                        mb: 1,
+                        textTransform: 'none',
+                        borderRadius: 1.5,
+                        borderColor: 'var(--glass-stroke-strong)',
+                        '&:hover': { borderColor: 'primary.main', background: 'var(--accent-soft)' },
+                    }}
+                    variant="outlined"
+                    color="primary"
                     onClick={addDependency}
                 >
-                    Add Dependency {inputs.dependencies.length > 0 ? `(${inputs.dependencies.length})` : ''}
+                    Add dependency {inputs.dependencies.length > 0 ? `(${inputs.dependencies.length})` : ''}
                 </Button>
             </Box>
 
@@ -112,19 +127,19 @@ function Dependency({ darkMode, inputs, setInputs, executor_names }) {
                         disableTouchListener
                         sx={{ mr: 1 }}
                         arrow
-                        title="Dependency executor will be inherited by attack executor if not selected"
+                        title="Required when dependencies exist. Invoke-AtomicTest does NOT inherit the attack executor — pick one explicitly."
                         placement='top'
                     >
                         <InfoIcon onClick={handleTooltipOpen} />
                     </Tooltip>
                 </ClickAwayListener>
-                <FormControl size="small" sx={{ width: "60%" }}>
-                    <InputLabel id="dependency_executor" style={{ fontSize: 14 }}>Dependency Executor</InputLabel>
+                <FormControl required size="small" sx={{ width: "60%" }}>
+                    <InputLabel id="dependency_executor" style={{ fontSize: 14 }}>Dependency Executor *</InputLabel>
                     <Select
                         labelId="dependency_executor"
                         id="dependency_executor_select"
                         value={inputs.dependency_executor_name}
-                        label="Dependency Executor"
+                        label="Dependency Executor *"
                         onChange={handleChangeDependencyExecutorType}
                     >
                         <MenuItem value="">None</MenuItem>
@@ -137,7 +152,16 @@ function Dependency({ darkMode, inputs, setInputs, executor_names }) {
 
             {/* Render each dependency */}
             {inputs.dependencies.map((dependency, index) => (
-                <Box key={`dependency-${index}`} sx={{ mb: 2, border: '1px solid #ccc', p: 2 }}>
+                <Box
+                    key={`dependency-${index}`}
+                    sx={{
+                        mb: 1.5,
+                        background: 'var(--glass-inset)',
+                        border: '1px solid var(--glass-stroke)',
+                        borderRadius: 2,
+                        p: 1.75,
+                    }}
+                >
                     {/* Description field */}
                     <TextField
                         spellCheck="false"

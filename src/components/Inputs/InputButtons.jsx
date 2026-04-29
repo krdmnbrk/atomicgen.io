@@ -17,23 +17,38 @@ import moderate from './samples/scheduled_task_startup_script.yaml';
 import complex from './samples/windows_push_file_using_scp.exe.yaml';
 import { Typography } from '@mui/material';
 import UploadButton from './UploadButton';
-import transformInputArguments from './transformInputArguments';
+import RepoLoaderButton from './RepoLoaderButton';
+import { mergeTechniqueAndTestIntoForm } from '../../utils/aiResponseValidator';
+import { useConfirm } from '../ConfirmDialog';
+
+// Best-known ATT&CK mappings for the bundled sample tests.
+const SAMPLE_TECHNIQUE_META = [
+    { attack_technique: 'T1082', display_name: 'System Information Discovery' },
+    { attack_technique: 'T1547.001', display_name: 'Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder' },
+    { attack_technique: 'T1105', display_name: 'Ingress Tool Transfer' },
+];
 
 
 
-export default function InputButtons({ inputButtonErrors, setInputButtonErrors, base, darkMode, setInputs, setChanged, changed }) {
+export default function InputButtons({ inputButtonErrors, setInputButtonErrors, base, darkMode, setInputs, setChanged, changed, setLoadedSource }) {
     const [open, setOpen] = React.useState(false);
     const [samples, setSamples] = useState([]);
     const anchorRef = React.useRef(null);
+    const confirm = useConfirm();
 
     useEffect(() => {
         const fetchSamples = async () => {
-            const tests = []
-            for (let test of [basic, moderate, complex]) {
-                let response = await fetch(test);
+            const tests = [];
+            const sources = [basic, moderate, complex];
+            for (let i = 0; i < sources.length; i++) {
+                let response = await fetch(sources[i]);
                 let yamlText = await response.text();
                 let parsed = yaml.load(yamlText);
-                tests.push({ ...base, ...transformInputArguments(parsed[0]) });
+                // Samples are bare arrays — wrap with the best-known technique meta.
+                const test = Array.isArray(parsed) ? parsed[0] : parsed;
+                const wrapper = SAMPLE_TECHNIQUE_META[i] || {};
+                const shape = mergeTechniqueAndTestIntoForm(wrapper, test);
+                tests.push({ ...base, ...shape });
             }
             setSamples(tests);
         }
@@ -57,11 +72,21 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
 
     const loadSample = async (level) => {
         if (changed) {
-            const confirm = window.confirm('Are you sure you want to load this sample? Your current inputs will be overwritten.');
-            if (!confirm) return;
+            const ok = await confirm({
+                title: 'Replace current test?',
+                message: 'Loading this sample will overwrite the test you have in the form.',
+                confirmText: 'Load sample',
+                cancelText: 'Keep current',
+                severity: 'warning',
+            });
+            if (!ok) return;
         }
         await setInputs({ ...base, ...samples[level] });
         setChanged(false);
+        if (setLoadedSource) {
+            const labels = ['Basic — Hostname Discovery', 'Moderate — Scheduled Task Startup', 'Complex — Push file using scp'];
+            setLoadedSource({ type: 'sample', label: labels[level] || `Sample ${level + 1}` });
+        }
         handleToggle(null);
     }
 
@@ -90,6 +115,17 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
                     inputButtonErrors={inputButtonErrors}
                     setChanged={setChanged}
                     changed={changed}
+                    setLoadedSource={setLoadedSource}
+                />
+                <RepoLoaderButton
+                    base={base}
+                    setInputs={setInputs}
+                    darkMode={darkMode}
+                    setInputButtonErrors={setInputButtonErrors}
+                    inputButtonErrors={inputButtonErrors}
+                    setChanged={setChanged}
+                    changed={changed}
+                    setLoadedSource={setLoadedSource}
                 />
             </ButtonGroup>
             {inputButtonErrors.length > 0 &&
@@ -112,7 +148,18 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
                         {...TransitionProps}
 
                     >
-                        <Paper elevation={6}>
+                        <Paper
+                            elevation={6}
+                            sx={{
+                                background: 'var(--glass-modal)',
+                                backdropFilter: 'blur(28px) saturate(180%)',
+                                WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+                                border: '1px solid var(--glass-stroke-strong)',
+                                borderRadius: 2,
+                                mt: 0.5,
+                                boxShadow: 'var(--shadow-modal)',
+                            }}
+                        >
                             <ClickAwayListener onClickAway={handleClose}>
                                 <MenuList id="split-button-menu" autoFocusItem>
                                     {

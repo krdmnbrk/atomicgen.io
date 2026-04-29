@@ -9,17 +9,20 @@ import {
   MenuItem,
   Box,
   IconButton,
-  Link
+  Link,
 } from '@mui/material';
 import LaunchIcon from '@mui/icons-material/Launch';
-import { GitHub as GitHubIcon, LightMode as LightModeIcon, DarkModeOutlined as DarkModeOutlinedIcon } from '@mui/icons-material';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import Tooltip from '@mui/material/Tooltip';
+import {
+  GitHub as GitHubIcon,
+  LightMode as LightModeIcon,
+  DarkModeOutlined as DarkModeOutlinedIcon,
+} from '@mui/icons-material';
 
-function Navbar( { darkMode, setDarkMode } ) {
-  // State for handling the menu anchor element (useful links dropdown)
+function Navbar({ darkMode, setDarkMode }) {
   const [anchorEl, setAnchorEl] = useState(null);
 
-
-  // List of useful links to display in the dropdown menu
   const usefulLinks = [
     { text: 'Atomic Specs', url: 'https://github.com/redcanaryco/atomic-red-team/wiki/Sample-Spec' },
     { text: 'Contributing Guide', url: 'https://github.com/redcanaryco/atomic-red-team/wiki/Contributing' },
@@ -29,17 +32,9 @@ function Navbar( { darkMode, setDarkMode } ) {
     { text: 'AttackRuleMap', url: 'https://attackrulemap.com/' },
   ];
 
-  // Function to handle opening the dropdown menu
-  const handleMenuOpen = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
+  const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
+  const handleMenuClose = () => setAnchorEl(null);
 
-  // Function to handle closing the dropdown menu
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  // Function to toggle the theme mode
   const handleThemeToggle = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
@@ -47,55 +42,103 @@ function Navbar( { darkMode, setDarkMode } ) {
   };
 
   return (
-    <AppBar position="static">
-      {/* Toolbar container for Navbar items */}
-      <Toolbar sx={{ display: 'flex', my: "5px" }}>
-        {/* Logo and Website Name */}
-        <Link underline="none" href='https://atomicgen.io' color='white'>
+    <AppBar
+      position="sticky"
+      elevation={0}
+      sx={{
+        background: 'var(--glass)',
+        backdropFilter: 'blur(28px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+        borderBottom: '1px solid var(--glass-stroke)',
+        color: 'text.primary',
+      }}
+    >
+      <Toolbar sx={{ display: 'flex', py: '6px', px: { xs: 2, md: 3.5 } }}>
+        <Link
+          underline="none"
+          href="https://atomicgen.io"
+          color="inherit"
+          sx={{ display: 'flex', alignItems: 'center', flex: 1 }}
+        >
           <Box
-            style={{
-              flex: 1,
+            sx={{
               display: 'flex',
               alignItems: 'center',
-              paddingTop: "6px",
-              paddingBottom: "6px"
+              py: '6px',
             }}
           >
-            {/* Logo Icon */}
-            <LogoIcon style={{ fill: "#fff", width: '45px', height: '45px', marginRight: "20px" }} />
+            <LogoIcon
+              style={{
+                width: '45px',
+                height: '45px',
+                marginRight: '20px',
+              }}
+            />
             <Box>
-              {/* Website Title */}
               <Typography className="headerTitle" variant="h5" component="div">
                 atomicgen.io
               </Typography>
-              {/* Subtitle */}
-              <Typography className="headerTitle" variant="subtitle2" component="div">
+              <Typography
+                className="headerTitle"
+                variant="subtitle2"
+                component="div"
+                sx={{ color: 'text.secondary' }}
+              >
                 atomic test generator
               </Typography>
             </Box>
           </Box>
         </Link>
 
-        {/* Right-hand Section of Navbar */}
         <Box
-          style={{
-            flex: 1,
+          sx={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'flex-end',
+            gap: 0.5,
           }}
         >
-          {/* Useful Links Dropdown Menu */}
+          <Tooltip
+            title="atomicgen.io has no backend. AI keys (BYOK) and prompts stay in your browser; nothing is logged or proxied."
+            placement="bottom"
+          >
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 0.75,
+                px: 1.25,
+                py: 0.5,
+                borderRadius: 1.5,
+                border: '1px solid var(--glass-stroke)',
+                background: 'var(--glass-strong)',
+                color: 'success.main',
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                fontFamily: "'JetBrains Mono', monospace",
+                mr: 1.5,
+              }}
+            >
+              <LockOutlinedIcon sx={{ fontSize: 13 }} />
+              BYOK · no backend
+            </Box>
+          </Tooltip>
           <Button
             color="inherit"
             aria-controls="useful-links-menu"
             aria-haspopup="true"
             onClick={handleMenuOpen}
-            style={{ textTransform: 'none' }}
+            sx={{
+              textTransform: 'none',
+              borderRadius: 2.5,
+              px: 1.75,
+              py: 1,
+              '&:hover': { background: 'var(--glass-strong)' },
+            }}
           >
-            <Typography fontSize={16} component="div">
-              Related Links
-            </Typography>
+            <Typography fontSize={15}>Related Links</Typography>
           </Button>
           <Menu
             id="useful-links-menu"
@@ -103,6 +146,17 @@ function Navbar( { darkMode, setDarkMode } ) {
             keepMounted
             open={Boolean(anchorEl)}
             onClose={handleMenuClose}
+            slotProps={{
+              paper: {
+                sx: {
+                  background: 'var(--glass-strong)',
+                  backdropFilter: 'blur(24px) saturate(180%)',
+                  WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+                  border: '1px solid var(--glass-stroke)',
+                  mt: 1,
+                },
+              },
+            }}
           >
             {usefulLinks.map((link, index) => (
               <MenuItem
@@ -118,31 +172,38 @@ function Navbar( { darkMode, setDarkMode } ) {
             ))}
           </Menu>
 
-          {/* GitHub Icon Link */}
           <IconButton
             component="a"
             href="https://github.com/krdmnbrk/atomicgen.io"
             target="_blank"
             color="inherit"
+            sx={{
+              borderRadius: 2.5,
+              '&:hover': { background: 'var(--glass-strong)' },
+            }}
           >
-            <GitHubIcon fontSize='medium' />
+            <GitHubIcon fontSize="medium" />
           </IconButton>
 
-          {/* Theme Toggle Button */}
           <IconButton
             onClick={handleThemeToggle}
             color="inherit"
+            sx={{
+              borderRadius: 2.5,
+              '&:hover': { background: 'var(--glass-strong)' },
+            }}
           >
             {darkMode ? <DarkModeOutlinedIcon fontSize="medium" /> : <LightModeIcon fontSize="medium" />}
           </IconButton>
         </Box>
       </Toolbar>
 
-      {/* Decorative Bottom Line */}
       <Box
         sx={{
           height: '1px',
-          background: darkMode ? '#d32f2f' : "#fff", 
+          background:
+            'linear-gradient(90deg, transparent, var(--accent) 30%, var(--accent-2) 50%, var(--accent) 70%, transparent)',
+          opacity: 0.6,
         }}
       />
     </AppBar>
