@@ -128,11 +128,10 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
                     border: '1px solid var(--glass-stroke)',
                     borderRadius: 3,
                     boxShadow: 'var(--shadow-glow)',
-                    p: 1.25,
-                    pr: 1.25,
+                    p: { xs: 1, sm: 1.25 },
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 1.25,
+                    gap: { xs: 0.75, sm: 1.25 },
                 }}
             >
                 <Box
@@ -141,7 +140,7 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
                         height: 36,
                         borderRadius: 2,
                         background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%)',
-                        display: 'grid',
+                        display: { xs: 'none', sm: 'grid' },
                         placeItems: 'center',
                         color: 'white',
                         boxShadow: '0 8px 24px -8px var(--accent), inset 0 1px 0 rgba(255,255,255,0.4)',
@@ -161,6 +160,7 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
                     disabled={indexLoading || loadingTest}
                     sx={{
                         flex: 1,
+                        minWidth: 0,
                         background: 'transparent',
                         border: 'none',
                         outline: 'none',
@@ -203,7 +203,7 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
                         background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%)',
                         color: 'white',
                         border: 'none',
-                        px: 2,
+                        px: { xs: 1.5, sm: 2 },
                         py: 1.25,
                         borderRadius: 2,
                         fontWeight: 600,
@@ -214,6 +214,7 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 1,
+                        flexShrink: 0,
                         transition: 'transform 0.12s, box-shadow 0.12s, opacity 0.12s',
                         '&:hover:not(:disabled)': {
                             transform: 'translateY(-1px)',
@@ -226,6 +227,7 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
                     <Box
                         component="kbd"
                         sx={{
+                            display: { xs: 'none', sm: 'inline-block' },
                             background: 'rgba(0,0,0,0.22)',
                             px: 0.6,
                             py: 0.15,

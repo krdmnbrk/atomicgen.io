@@ -53,36 +53,51 @@ function Navbar({ darkMode, setDarkMode }) {
         color: 'text.primary',
       }}
     >
-      <Toolbar sx={{ display: 'flex', py: '6px', px: { xs: 2, md: 3.5 } }}>
+      <Toolbar sx={{ display: 'flex', py: '6px', px: { xs: 1.5, md: 3.5 }, minHeight: { xs: 56, sm: 64 }, gap: 0.5 }}>
         <Link
           underline="none"
           href="https://atomicgen.io"
           color="inherit"
-          sx={{ display: 'flex', alignItems: 'center', flex: 1 }}
+          sx={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}
         >
           <Box
             sx={{
               display: 'flex',
               alignItems: 'center',
               py: '6px',
+              minWidth: 0,
             }}
           >
             <LogoIcon
               style={{
-                width: '45px',
-                height: '45px',
-                marginRight: '20px',
+                width: 'clamp(34px, 8vw, 45px)',
+                height: 'clamp(34px, 8vw, 45px)',
+                marginRight: '14px',
+                flexShrink: 0,
               }}
             />
-            <Box>
-              <Typography className="headerTitle" variant="h5" component="div">
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                className="headerTitle"
+                variant="h5"
+                component="div"
+                sx={{
+                  fontSize: { xs: 18, sm: 22, md: 24 },
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
                 atomicgen.io
               </Typography>
               <Typography
                 className="headerTitle"
                 variant="subtitle2"
                 component="div"
-                sx={{ color: 'text.secondary' }}
+                sx={{
+                  color: 'text.secondary',
+                  display: { xs: 'none', sm: 'block' },
+                }}
               >
                 atomic test generator
               </Typography>
@@ -96,6 +111,7 @@ function Navbar({ darkMode, setDarkMode }) {
             alignItems: 'center',
             justifyContent: 'flex-end',
             gap: 0.5,
+            flexShrink: 0,
           }}
         >
           <Tooltip
@@ -104,7 +120,7 @@ function Navbar({ darkMode, setDarkMode }) {
           >
             <Box
               sx={{
-                display: 'inline-flex',
+                display: { xs: 'none', md: 'inline-flex' },
                 alignItems: 'center',
                 gap: 0.75,
                 px: 1.25,
@@ -125,12 +141,30 @@ function Navbar({ darkMode, setDarkMode }) {
               BYOK · no backend
             </Box>
           </Tooltip>
+          <Tooltip title="BYOK · no backend — keys & prompts stay in your browser" placement="bottom">
+            <Box
+              sx={{
+                display: { xs: 'inline-flex', md: 'none' },
+                alignItems: 'center',
+                px: 0.9,
+                py: 0.6,
+                borderRadius: 1.5,
+                border: '1px solid var(--glass-stroke)',
+                background: 'var(--glass-strong)',
+                color: 'success.main',
+                mr: 0.5,
+              }}
+            >
+              <LockOutlinedIcon sx={{ fontSize: 14 }} />
+            </Box>
+          </Tooltip>
           <Button
             color="inherit"
             aria-controls="useful-links-menu"
             aria-haspopup="true"
             onClick={handleMenuOpen}
             sx={{
+              display: { xs: 'none', sm: 'inline-flex' },
               textTransform: 'none',
               borderRadius: 2.5,
               px: 1.75,
@@ -140,6 +174,21 @@ function Navbar({ darkMode, setDarkMode }) {
           >
             <Typography fontSize={15}>Related Links</Typography>
           </Button>
+          <Tooltip title="Related Links" placement="bottom">
+            <IconButton
+              aria-controls="useful-links-menu"
+              aria-haspopup="true"
+              onClick={handleMenuOpen}
+              color="inherit"
+              sx={{
+                display: { xs: 'inline-flex', sm: 'none' },
+                borderRadius: 2.5,
+                '&:hover': { background: 'var(--glass-strong)' },
+              }}
+            >
+              <LaunchIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
           <Menu
             id="useful-links-menu"
             anchorEl={anchorEl}

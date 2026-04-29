@@ -284,6 +284,7 @@ function Inputs({
                     sx={{
                         display: 'inline-flex',
                         alignItems: 'center',
+                        flexWrap: 'wrap',
                         gap: 0.75,
                         mb: 1.5,
                         px: 1.25,
@@ -294,6 +295,7 @@ function Inputs({
                         fontSize: 11,
                         color: 'primary.main',
                         fontFamily: "'JetBrains Mono', monospace",
+                        maxWidth: '100%',
                     }}
                 >
                     {loadedSource.type === 'repo' && (
