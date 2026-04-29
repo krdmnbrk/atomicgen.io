@@ -46,9 +46,9 @@ function Navbar({ darkMode, setDarkMode }) {
       position="sticky"
       elevation={0}
       sx={{
-        background: 'var(--glass)',
-        backdropFilter: 'blur(28px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+        background: 'var(--glass-strong)',
+        backdropFilter: 'blur(16px) saturate(160%)',
+        WebkitBackdropFilter: 'blur(16px) saturate(160%)',
         borderBottom: '1px solid var(--glass-stroke)',
         color: 'text.primary',
       }}

@@ -272,6 +272,8 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
   return (
     <Paper
       elevation={0}
+      role="region"
+      aria-label="YAML preview"
       sx={{
         background: 'var(--glass)',
         backdropFilter: 'blur(28px) saturate(180%)',
@@ -293,13 +295,13 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: 2,
-          px: 2.5,
-          py: 1.75,
+          gap: { xs: 1, sm: 2 },
+          px: { xs: 1.5, sm: 2.5 },
+          py: { xs: 1.25, sm: 1.75 },
           borderBottom: '1px solid var(--glass-stroke)',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1.25 }, minWidth: 0 }}>
           <Box
             sx={{
               fontSize: 11,
@@ -310,27 +312,32 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
               display: 'flex',
               alignItems: 'center',
               gap: 1,
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
             }}
           >
             <DescriptionOutlinedIcon sx={{ fontSize: 16, color: 'primary.main' }} />
-            YAML preview
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>YAML preview</Box>
+            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>YAML</Box>
           </Box>
           {showContent && (
           <Box
             sx={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 0.75,
+              gap: 0.5,
               fontSize: 11,
               color: hasErrors ? 'error.main' : 'success.main',
               background: hasErrors ? 'rgba(229, 72, 77, 0.10)' : 'rgba(77, 221, 150, 0.10)',
               border: '1px solid',
               borderColor: hasErrors ? 'rgba(229, 72, 77, 0.30)' : 'rgba(77, 221, 150, 0.30)',
-              px: 1.25,
+              px: 1,
               py: 0.4,
               borderRadius: 12,
               backdropFilter: 'blur(12px)',
               cursor: hasErrors ? 'pointer' : 'default',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
             }}
             onClick={hasErrors ? showValidationErrorHandler : undefined}
           >
@@ -343,7 +350,9 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
                 boxShadow: `0 0 6px ${hasErrors ? '#E5484D' : '#4DDD96'}`,
               }}
             />
-            {hasErrors ? `${errorCount} error${errorCount === 1 ? '' : 's'}` : '0 errors'}
+            {hasErrors
+              ? `${errorCount} error${errorCount === 1 ? '' : 's'}`
+              : <Box component="span"><Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>0 errors</Box><Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>OK</Box></Box>}
           </Box>
           )}
         </Box>
@@ -466,20 +475,49 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
                   num: '1',
                   title: 'Describe a test in plain English',
                   hint: 'AI bar above — type what you want, refine until it fits.',
+                  action: () => {
+                    const ai = document.querySelector('input[placeholder*="Describe a test"]');
+                    if (ai) {
+                      ai.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      setTimeout(() => ai.focus(), 350);
+                    }
+                  },
                 },
                 {
                   num: '2',
                   title: 'Browse existing atomic-red-team tests',
                   hint: 'Load any T-ID and adapt it to your environment.',
+                  action: () => {
+                    const btn = [...document.querySelectorAll('button')].find(
+                      (b) => b.textContent.trim() === 'Load from Repo'
+                    );
+                    btn?.click();
+                  },
                 },
                 {
                   num: '3',
                   title: 'Author from scratch',
                   hint: 'Fill the form below; YAML appears here as you type.',
+                  action: () => {
+                    const name = document.querySelector('input[name="name"]');
+                    if (name) {
+                      name.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      setTimeout(() => name.focus(), 350);
+                    }
+                  },
                 },
               ].map((step) => (
                 <Box
                   key={step.num}
+                  role="button"
+                  tabIndex={0}
+                  onClick={step.action}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      step.action();
+                    }
+                  }}
                   sx={{
                     display: 'flex',
                     gap: 1.5,
@@ -488,6 +526,18 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
                     background: 'var(--glass-inset)',
                     border: '1px solid var(--glass-stroke)',
                     borderRadius: 2,
+                    cursor: 'pointer',
+                    transition: 'all 0.14s',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      background: 'var(--accent-soft)',
+                      transform: 'translateX(2px)',
+                    },
+                    '&:focus-visible': {
+                      outline: 'none',
+                      borderColor: 'primary.main',
+                      boxShadow: '0 0 0 3px rgba(255, 92, 57, 0.15)',
+                    },
                   }}
                 >
                   <Box

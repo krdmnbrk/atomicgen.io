@@ -290,11 +290,10 @@ function Inputs({
                         px: 1.25,
                         py: 0.5,
                         borderRadius: 1.5,
-                        background: 'var(--accent-soft)',
-                        border: '1px solid rgba(255, 92, 57, 0.25)',
-                        fontSize: 11,
-                        color: 'primary.main',
-                        fontFamily: "'JetBrains Mono', monospace",
+                        background: 'var(--glass-strong)',
+                        border: '1px solid var(--glass-stroke)',
+                        fontSize: 12,
+                        color: 'text.secondary',
                         maxWidth: '100%',
                     }}
                 >
@@ -329,8 +328,29 @@ function Inputs({
                         </>
                     )}
                     {changed && (
-                        <Box component="span" sx={{ opacity: 0.6, fontStyle: 'italic', ml: 0.5 }}>
-                            · modified
+                        <Box
+                            component="span"
+                            title="Form has unsaved changes"
+                            sx={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                ml: 0.5,
+                                color: 'warning.main',
+                                fontSize: 11,
+                            }}
+                        >
+                            <Box
+                                component="span"
+                                sx={{
+                                    width: 6,
+                                    height: 6,
+                                    borderRadius: '50%',
+                                    background: 'warning.main',
+                                    boxShadow: '0 0 6px #F5B74E',
+                                }}
+                            />
+                            modified
                         </Box>
                     )}
                 </Box>
@@ -338,7 +358,23 @@ function Inputs({
 
             {/* ─── IDENTITY ─── */}
             <Paper elevation={0} sx={glassSection}>
-                <SectionTitle icon={<InfoOutlinedIcon sx={{ fontSize: 16 }} />}>Identity</SectionTitle>
+                <SectionTitle
+                    icon={<InfoOutlinedIcon sx={{ fontSize: 16 }} />}
+                    meta={
+                        inputs.attack_technique || (inputs.supported_platforms || []).length
+                            ? [
+                                  inputs.attack_technique,
+                                  (inputs.supported_platforms || []).length
+                                      ? `${inputs.supported_platforms.length} platform${inputs.supported_platforms.length === 1 ? '' : 's'}`
+                                      : null,
+                              ]
+                                  .filter(Boolean)
+                                  .join(' · ')
+                            : null
+                    }
+                >
+                    Identity
+                </SectionTitle>
                 <Box sx={{ display: 'flex', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>
                     <Autocomplete
                         freeSolo
@@ -432,6 +468,8 @@ function Inputs({
                         name="display_name"
                         value={inputs.display_name || ''}
                         onChange={handleChangeText}
+                        title={inputs.display_name || ''}
+                        slotProps={{ htmlInput: { title: inputs.display_name || '' } }}
                         sx={{ ...inputSx, flex: '1 1 280px' }}
                     />
                 </Box>
@@ -543,7 +581,7 @@ function Inputs({
                     sx={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 1,
+                        gap: 1.25,
                         mt: 2,
                         pt: 1.5,
                         borderTop: '1px solid var(--glass-stroke)',
@@ -556,6 +594,7 @@ function Inputs({
                             color: 'var(--text-faint)',
                             letterSpacing: '0.10em',
                             textTransform: 'uppercase',
+                            flexShrink: 0,
                         }}
                     >
                         GUID
@@ -569,12 +608,13 @@ function Inputs({
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
+                            minWidth: 0,
                         }}
                     >
-                        {inputs.auto_generated_guid || 'not set — will be generated on first download'}
+                        {inputs.auto_generated_guid || 'auto-generated on first download'}
                     </Typography>
                     <Tooltip title={inputs.auto_generated_guid ? 'Regenerate GUID' : 'Generate GUID now'}>
-                        <IconButton size="small" onClick={regenerateGuid} sx={{ color: 'text.secondary' }}>
+                        <IconButton size="small" onClick={regenerateGuid} sx={{ color: 'text.secondary', flexShrink: 0 }}>
                             <RefreshRoundedIcon sx={{ fontSize: 16 }} />
                         </IconButton>
                     </Tooltip>
@@ -585,7 +625,14 @@ function Inputs({
             <Paper elevation={0} sx={glassSection}>
                 <SectionTitle
                     icon={<TerminalRoundedIcon sx={{ fontSize: 16 }} />}
-                    meta={inputs.input_arguments?.length > 0 ? `${inputs.input_arguments.length} input argument${inputs.input_arguments.length === 1 ? '' : 's'}` : null}
+                    meta={[
+                        inputs.executor?.name,
+                        inputs.input_arguments?.length > 0
+                            ? `${inputs.input_arguments.length} arg${inputs.input_arguments.length === 1 ? '' : 's'}`
+                            : null,
+                    ]
+                        .filter(Boolean)
+                        .join(' · ') || null}
                 >
                     Execution
                 </SectionTitle>
@@ -641,10 +688,18 @@ function Inputs({
                             display: 'flex',
                             alignItems: 'baseline',
                             gap: 1,
+                            flexWrap: 'wrap',
                         }}
                     >
                         Input arguments
-                        <Typography component="span" sx={{ fontSize: 11, color: 'var(--text-faint)' }}>
+                        <Typography
+                            component="span"
+                            sx={{
+                                fontSize: 11,
+                                color: 'var(--text-faint)',
+                                display: { xs: 'none', sm: 'inline' },
+                            }}
+                        >
                             — referenced as{' '}
                             <Box
                                 component="code"
@@ -748,24 +803,43 @@ function Inputs({
                 <AccordionSummary
                     expandIcon={<ExpandMoreRoundedIcon sx={{ color: 'text.secondary' }} />}
                     sx={{
-                        px: 2.5,
+                        px: { xs: 1.75, sm: 2.5 },
                         py: 1,
                         '& .MuiAccordionSummary-content': {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            gap: 2,
+                            gap: { xs: 1, sm: 2 },
+                            minWidth: 0,
                         },
                     }}
                 >
-                    <Box sx={sectionTitleSx} style={{ marginBottom: 0 }}>
+                    <Box sx={{ ...sectionTitleSx, minWidth: 0, whiteSpace: 'nowrap' }} style={{ marginBottom: 0 }}>
                         <Box sx={{ color: 'primary.main', display: 'flex' }}>
                             <CleaningServicesOutlinedIcon sx={{ fontSize: 16 }} />
                         </Box>
                         Setup &amp; Cleanup
                     </Box>
-                    <Typography sx={{ fontSize: 11, color: 'var(--text-faint)', mr: 1 }}>
-                        dependencies &amp; cleanup · optional
+                    <Typography
+                        sx={{
+                            fontSize: 11,
+                            fontFamily: "'JetBrains Mono', monospace",
+                            color: 'var(--text-faint)',
+                            mr: 1,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: { xs: 'none', sm: 'block' },
+                        }}
+                    >
+                        {(() => {
+                            const depCount = (inputs.dependencies || []).length;
+                            const hasCleanup = !!(inputs.executor?.cleanup_command || '').trim();
+                            const parts = [];
+                            if (hasCleanup) parts.push('cleanup');
+                            if (depCount) parts.push(`${depCount} dep${depCount === 1 ? '' : 's'}`);
+                            return parts.length ? parts.join(' · ') : 'optional';
+                        })()}
                     </Typography>
                 </AccordionSummary>
                 <AccordionDetails sx={{ px: 2.5, pt: 0, pb: 2.5, borderTop: '1px solid var(--glass-stroke)' }}>

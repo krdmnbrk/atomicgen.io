@@ -83,8 +83,19 @@ export default function UploadButton({ inputButtonErrors, setInputButtonErrors, 
         <Button
             component="label"
             role={undefined}
-            variant={darkMode ? "outlined" : "contained"}
+            variant="text"
+            color="inherit"
             tabIndex={-1}
+            sx={{
+                textTransform: 'none',
+                fontWeight: 500,
+                borderRadius: 2,
+                color: 'text.secondary',
+                '&:hover': {
+                    color: 'primary.main',
+                    background: 'var(--glass-strong)',
+                },
+            }}
         >
             Upload YAML
             <VisuallyHiddenInput

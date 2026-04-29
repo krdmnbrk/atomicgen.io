@@ -210,7 +210,21 @@ export default function RepoLoaderButton({
 
     return (
         <>
-            <Button variant={darkMode ? 'outlined' : 'contained'} onClick={handleOpen}>
+            <Button
+                variant="outlined"
+                color="primary"
+                onClick={handleOpen}
+                sx={{
+                    textTransform: 'none',
+                    fontWeight: 500,
+                    borderRadius: 2,
+                    borderColor: 'var(--glass-stroke-strong)',
+                    '&:hover': {
+                        borderColor: 'primary.main',
+                        background: 'var(--accent-soft)',
+                    },
+                }}
+            >
                 Load from Repo
             </Button>
 
@@ -376,6 +390,13 @@ export default function RepoLoaderButton({
                                 return (
                                     <Box
                                         key={g.id}
+                                        ref={(el) => {
+                                            if (el && active) {
+                                                // Auto-scroll the active tactic into view, primarily
+                                                // useful for the mobile horizontal scroll strip.
+                                                el.scrollIntoView({ block: 'nearest', inline: 'center' });
+                                            }
+                                        }}
                                         onClick={() => setActiveTactic(g.id)}
                                         role="button"
                                         sx={{

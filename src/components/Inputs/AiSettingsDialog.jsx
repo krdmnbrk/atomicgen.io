@@ -80,7 +80,14 @@ export default function AiSettingsDialog({
     };
 
     return (
-        <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+        <Dialog
+            open={open}
+            onClose={onClose}
+            fullWidth
+            maxWidth="sm"
+            sx={{ '& .MuiDialog-container': { alignItems: 'flex-start' } }}
+            PaperProps={{ sx: { mt: { xs: '8vh', sm: '20vh' }, mx: 2 } }}
+        >
             <DialogTitle>AI provider settings</DialogTitle>
             <DialogContent>
                 <Stack spacing={2} sx={{ mt: 1 }}>
@@ -124,12 +131,17 @@ export default function AiSettingsDialog({
                         fullWidth
                         autoComplete="off"
                         helperText={
-                            <>
-                                Get a key:&nbsp;
-                                <Link href={provider.apiKeyHelpUrl} target="_blank" rel="noopener">
-                                    {provider.apiKeyHelpUrl}
+                            <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                                Get a key
+                                <Link
+                                    href={provider.apiKeyHelpUrl}
+                                    target="_blank"
+                                    rel="noopener"
+                                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}
+                                >
+                                    here →
                                 </Link>
-                            </>
+                            </Box>
                         }
                     />
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -168,7 +180,7 @@ export default function AiSettingsDialog({
                     </Box>
                 </Stack>
             </DialogContent>
-            <DialogActions>
+            <DialogActions sx={{ '& .MuiButton-root': { textTransform: 'none' } }}>
                 <Button
                     color="warning"
                     onClick={async () => {
