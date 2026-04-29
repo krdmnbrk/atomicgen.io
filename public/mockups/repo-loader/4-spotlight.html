@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Repo loader · 04 Spotlight</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="_shared.css" />
+<style>
+  /* Spotlight: no card chrome around results — just a floating search field
+     with a soft drop list that appears like a list of hovering rows. */
+  .modal-shell { width: min(620px, calc(100vw - 32px)); }
+  .spotlight-search {
+    background: var(--glass-modal);
+    backdrop-filter: blur(40px) saturate(220%);
+    -webkit-backdrop-filter: blur(40px) saturate(220%);
+    border: 1px solid var(--glass-stroke-strong);
+    border-radius: 18px;
+    box-shadow: var(--shadow-modal),
+                0 0 0 4px rgba(255, 92, 57, 0.06);
+    padding: 8px 10px 8px 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .spotlight-search:focus-within {
+    border-color: rgba(255, 92, 57, 0.4);
+  }
+  .spot-icon {
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+  .spot-input {
+    flex: 1;
+    background: transparent;
+    border: none; outline: none;
+    color: var(--text);
+    font-size: 18px;
+    padding: 12px 0;
+    font-family: inherit;
+    letter-spacing: -0.01em;
+  }
+  .spot-input::placeholder { color: var(--text-faint); font-weight: 400; }
+  .spot-pill {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--glass-stroke);
+    color: var(--text-faint);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
+
+  .spot-results {
+    margin-top: 10px;
+    display: flex; flex-direction: column;
+    gap: 6px;
+  }
+  .spot-row {
+    background: var(--glass);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: all 0.14s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .spot-row:hover {
+    background: var(--glass-strong);
+    transform: translateX(2px);
+    border-color: var(--glass-stroke-strong);
+  }
+  .spot-row.selected {
+    background: linear-gradient(90deg, rgba(255, 92, 57, 0.16), rgba(255, 138, 102, 0.08));
+    border-color: rgba(255, 92, 57, 0.4);
+    box-shadow: 0 8px 24px -8px rgba(255, 92, 57, 0.4);
+  }
+  .spot-tid {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 500;
+    width: 76px;
+  }
+  .spot-name { font-size: 14px; color: var(--text); }
+  .spot-name .secondary {
+    display: block;
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-top: 2px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .spot-arrow {
+    color: var(--text-faint);
+    font-size: 16px;
+    opacity: 0;
+    transition: opacity 0.14s;
+  }
+  .spot-row:hover .spot-arrow,
+  .spot-row.selected .spot-arrow {
+    opacity: 1;
+    color: var(--accent);
+  }
+
+  .hint {
+    margin-top: 12px;
+    text-align: center;
+    color: var(--text-faint);
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .hint kbd { margin: 0 1px; }
+</style>
+</head>
+<body>
+
+<div class="stage"></div>
+<div class="dim"></div>
+<div class="position-label">popup top = 25vh</div>
+<div class="crumb"><a href="index.html">← all 5 designs</a></div>
+
+<div class="modal-shell">
+  <div class="spotlight-search">
+    <svg class="spot-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.35-4.35"/></svg>
+    <input class="spot-input" type="text" placeholder="atomic-red-team — search a technique" value="lsass" />
+    <span class="spot-pill">8 results</span>
+  </div>
+
+  <div class="spot-results">
+    <div class="spot-row selected">
+      <span class="spot-tid">T1003.001</span>
+      <span class="spot-name">OS Credential Dumping: LSASS Memory<span class="secondary">credential-access · windows · 12 atomic tests</span></span>
+      <span class="spot-arrow">→</span>
+    </div>
+    <div class="spot-row">
+      <span class="spot-tid">T1003.002</span>
+      <span class="spot-name">OS Credential Dumping: Security Account Manager<span class="secondary">credential-access · windows · 4 atomic tests</span></span>
+      <span class="spot-arrow">→</span>
+    </div>
+    <div class="spot-row">
+      <span class="spot-tid">T1003.003</span>
+      <span class="spot-name">OS Credential Dumping: NTDS<span class="secondary">credential-access · windows · 6 atomic tests</span></span>
+      <span class="spot-arrow">→</span>
+    </div>
+    <div class="spot-row">
+      <span class="spot-tid">T1055.001</span>
+      <span class="spot-name">Process Injection: DLL Injection (LSASS targets)<span class="secondary">defense-evasion · windows · 5 atomic tests</span></span>
+      <span class="spot-arrow">→</span>
+    </div>
+    <div class="spot-row">
+      <span class="spot-tid">T1134.001</span>
+      <span class="spot-name">Access Token Manipulation: Token Impersonation<span class="secondary">privilege-escalation · windows · 3 atomic tests</span></span>
+      <span class="spot-arrow">→</span>
+    </div>
+  </div>
+
+  <div class="hint">
+    <kbd>↑</kbd> <kbd>↓</kbd> navigate · <kbd>↵</kbd> open · <kbd>esc</kbd> close
+  </div>
+</div>
+
+</body>
+</html>

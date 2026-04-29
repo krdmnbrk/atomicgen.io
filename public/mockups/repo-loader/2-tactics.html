@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Repo loader · 02 Tactic browse</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="_shared.css" />
+<style>
+  .modal-shell { width: min(880px, calc(100vw - 32px)); }
+  .panel {
+    background: var(--glass-modal);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid var(--glass-stroke-strong);
+    border-radius: 16px;
+    box-shadow: var(--shadow-modal);
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto 1fr;
+  }
+  .header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--glass-stroke);
+  }
+  .title-block { flex: 1; min-width: 0; }
+  .h-title {
+    font-size: 15px; font-weight: 600;
+    margin: 0;
+  }
+  .h-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-faint);
+    letter-spacing: 0.04em;
+    margin-top: 2px;
+  }
+  .search-mini {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 8px;
+    padding: 6px 10px;
+    width: 240px;
+  }
+  .search-mini input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+  }
+  .search-mini input::placeholder { color: var(--text-faint); }
+
+  .body {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    height: 56vh;
+    min-height: 420px;
+  }
+  .tactics {
+    background: rgba(0,0,0,0.18);
+    border-right: 1px solid var(--glass-stroke);
+    overflow: auto;
+    padding: 8px 6px;
+  }
+  .tac-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 13px;
+    transition: background 0.1s, color 0.1s;
+  }
+  .tac-row:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+  .tac-row.active {
+    background: rgba(255, 92, 57, 0.12);
+    color: var(--text);
+  }
+  .tac-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .tac-name { flex: 1; }
+  .tac-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-faint);
+  }
+
+  .techniques { overflow: auto; padding: 8px 12px; }
+  .tech-card {
+    display: grid;
+    grid-template-columns: 92px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 14px;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.12s;
+  }
+  .tech-card:hover {
+    background: rgba(255,255,255,0.04);
+    border-color: var(--glass-stroke);
+  }
+  .tech-card.featured {
+    border-color: var(--accent);
+    background: rgba(255, 92, 57, 0.08);
+  }
+  .tc-tid {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .tc-name {
+    font-size: 14px;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tc-name .sub {
+    display: block;
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-top: 2px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .tc-count-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--glass-stroke);
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="stage"></div>
+<div class="dim"></div>
+<div class="position-label">popup top = 25vh</div>
+<div class="crumb"><a href="index.html">← all 5 designs</a></div>
+
+<div class="modal-shell">
+  <div class="panel">
+    <div class="header">
+      <div class="title-block">
+        <h2 class="h-title">Browse atomic-red-team</h2>
+        <div class="h-sub">14 tactics · 1,521 atomic tests · live from GitHub</div>
+      </div>
+      <div class="search-mini">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-faint)"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.35-4.35"/></svg>
+        <input type="text" placeholder="Filter…" />
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="tactics">
+        <div class="tac-row"><span class="tac-dot" style="background:#6FA9FF"></span><span class="tac-name">Initial Access</span><span class="tac-count">36</span></div>
+        <div class="tac-row"><span class="tac-dot" style="background:var(--accent)"></span><span class="tac-name">Execution</span><span class="tac-count">112</span></div>
+        <div class="tac-row"><span class="tac-dot" style="background:#C28FFF"></span><span class="tac-name">Persistence</span><span class="tac-count">198</span></div>
+        <div class="tac-row"><span class="tac-dot" style="background:#FFB347"></span><span class="tac-name">Privilege Escalation</span><span class="tac-count">142</span></div>
+        <div class="tac-row"><span class="tac-dot" style="background:#4DDD96"></span><span class="tac-name">Defense Evasion</span><span class="tac-count">240</span></div>
+        <div class="tac-row active"><span class="tac-dot" style="background:#F45C7B"></span><span class="tac-name">Credential Access</span><span class="tac-count">132</span></div>
+        <div class="tac-row"><span class="tac-dot" style="background:#50D5E0"></span><span class="tac-name">Discovery</span><span class="tac-count">186</span></div>
+        <div class="tac-row"><span class="tac-dot" style="background:#B4D85A"></span><span class="tac-name">Lateral Movement</span><span class="tac-count">68</span></div>
+        <div class="tac-row"><span class="tac-dot" style="background:#FF8AC1"></span><span class="tac-name">Collection</span><span class="tac-count">82</span></div>
+        <div class="tac-row"><span class="tac-dot" style="background:#A0A0A0"></span><span class="tac-name">Command and Control</span><span class="tac-count">56</span></div>
+        <div class="tac-row"><span class="tac-dot" style="background:#E5C07B"></span><span class="tac-name">Exfiltration</span><span class="tac-count">36</span></div>
+        <div class="tac-row"><span class="tac-dot" style="background:#D85959"></span><span class="tac-name">Impact</span><span class="tac-count">88</span></div>
+      </div>
+
+      <div class="techniques">
+        <div class="tech-card featured">
+          <span class="tc-tid">T1003.001</span>
+          <span class="tc-name">OS Credential Dumping: LSASS Memory<span class="sub">windows · 12 atomic tests</span></span>
+          <span class="tc-count-badge">12 tests</span>
+        </div>
+        <div class="tech-card">
+          <span class="tc-tid">T1003.002</span>
+          <span class="tc-name">OS Credential Dumping: Security Account Manager<span class="sub">windows · 4 atomic tests</span></span>
+          <span class="tc-count-badge">4 tests</span>
+        </div>
+        <div class="tech-card">
+          <span class="tc-tid">T1003.003</span>
+          <span class="tc-name">OS Credential Dumping: NTDS<span class="sub">windows · 6 atomic tests</span></span>
+          <span class="tc-count-badge">6 tests</span>
+        </div>
+        <div class="tech-card">
+          <span class="tc-tid">T1003.008</span>
+          <span class="tc-name">OS Credential Dumping: /etc/passwd and /etc/shadow<span class="sub">linux · 3 atomic tests</span></span>
+          <span class="tc-count-badge">3 tests</span>
+        </div>
+        <div class="tech-card">
+          <span class="tc-tid">T1110.001</span>
+          <span class="tc-name">Brute Force: Password Guessing<span class="sub">all · 8 atomic tests</span></span>
+          <span class="tc-count-badge">8 tests</span>
+        </div>
+        <div class="tech-card">
+          <span class="tc-tid">T1552.001</span>
+          <span class="tc-name">Unsecured Credentials: Credentials In Files<span class="sub">windows · linux · 5 atomic tests</span></span>
+          <span class="tc-count-badge">5 tests</span>
+        </div>
+        <div class="tech-card">
+          <span class="tc-tid">T1555.003</span>
+          <span class="tc-name">Credentials from Password Stores: Browsers<span class="sub">windows · macos · 7 atomic tests</span></span>
+          <span class="tc-count-badge">7 tests</span>
+        </div>
+        <div class="tech-card">
+          <span class="tc-tid">T1558.003</span>
+          <span class="tc-name">Steal or Forge Kerberos Tickets: Kerberoasting<span class="sub">windows · 2 atomic tests</span></span>
+          <span class="tc-count-badge">2 tests</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
