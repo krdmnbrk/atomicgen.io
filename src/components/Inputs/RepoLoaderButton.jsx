@@ -10,6 +10,7 @@ import Box from '@mui/material/Box';
 import yaml from 'js-yaml';
 import UploadedAtomicSelection from './UploadedAtomicSelection';
 import useAtomicIndex from '../../hooks/useAtomicIndex';
+import { useConfirm } from '../ConfirmDialog';
 
 const REPO_BASE = 'https://raw.githubusercontent.com/redcanaryco/atomic-red-team/master/atomics';
 const techniqueYamlUrl = (tid) => `${REPO_BASE}/${tid}/${tid}.yaml`;
@@ -33,17 +34,22 @@ export default function RepoLoaderButton({
     const [fileContent, setFileContent] = React.useState(null);
     const { data, loading, error } = useAtomicIndex();
     const techniques = data ? data.techniques : [];
+    const confirm = useConfirm();
 
     React.useEffect(() => {
         if (error) setInputButtonErrors(['Failed to load technique index from atomic-red-team repository.']);
     }, [error, setInputButtonErrors]);
 
-    const handleOpen = () => {
+    const handleOpen = async () => {
         if (changed) {
-            const confirm = window.confirm(
-                'Are you sure you want to load a test from the repository? Your current inputs will be overwritten.'
-            );
-            if (!confirm) return;
+            const ok = await confirm({
+                title: 'Replace current test?',
+                message: 'Loading a test from atomic-red-team will overwrite the test you have in the form.',
+                confirmText: 'Browse repo',
+                cancelText: 'Keep current',
+                severity: 'warning',
+            });
+            if (!ok) return;
         }
         setInputButtonErrors([]);
         setOpen(true);

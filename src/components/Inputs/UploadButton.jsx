@@ -4,6 +4,7 @@ import Button from '@mui/material/Button';
 import yaml from 'js-yaml';
 import UploadedAtomicSelection from './UploadedAtomicSelection';
 import { mergeTechniqueAndTestIntoForm } from '../../utils/aiResponseValidator';
+import { useConfirm } from '../ConfirmDialog';
 
 const VisuallyHiddenInput = styled('input')({
     clip: 'rect(0 0 0 0)',
@@ -25,12 +26,22 @@ export default function UploadButton({ inputButtonErrors, setInputButtonErrors, 
     const [techniqueId, setTechniqueId] = React.useState(null);
     const [fileContent, setFileContent] = React.useState(null);
     const [filename, setFilename] = React.useState(null);
+    const confirm = useConfirm();
 
     const handleFileUpload = async (event) => {
         setInputButtonErrors([]);
         if (changed) {
-            const confirm = window.confirm('Are you sure you want to load another test? Your current inputs will be overwritten.');
-            if (!confirm) return;
+            const ok = await confirm({
+                title: 'Replace current test?',
+                message: 'Uploading this YAML will overwrite the test you have in the form.',
+                confirmText: 'Upload',
+                cancelText: 'Keep current',
+                severity: 'warning',
+            });
+            if (!ok) {
+                event.target.value = null;
+                return;
+            }
         }
         const file = event.target.files[0];
         if (file) {

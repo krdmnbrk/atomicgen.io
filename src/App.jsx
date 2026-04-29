@@ -10,6 +10,7 @@ import Grid from '@mui/material/Grid2';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
+import { ConfirmProvider } from './components/ConfirmDialog';
 
 const executor_names = [
   "powershell",
@@ -496,6 +497,7 @@ function App() {
     <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
       <CssBaseline />
       {globalStyles}
+      <ConfirmProvider>
       <Navbar darkMode={darkMode} setDarkMode={setDarkMode} />
       <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 1500, mx: 'auto' }}>
         <Grid container spacing={{ xs: 2, md: 3 }}>
@@ -580,6 +582,7 @@ function App() {
           Form reset.
         </Alert>
       </Snackbar>
+      </ConfirmProvider>
     </ThemeProvider>
   );
 }

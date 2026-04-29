@@ -19,6 +19,7 @@ import { Typography } from '@mui/material';
 import UploadButton from './UploadButton';
 import RepoLoaderButton from './RepoLoaderButton';
 import { mergeTechniqueAndTestIntoForm } from '../../utils/aiResponseValidator';
+import { useConfirm } from '../ConfirmDialog';
 
 // Best-known ATT&CK mappings for the bundled sample tests.
 const SAMPLE_TECHNIQUE_META = [
@@ -33,6 +34,7 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
     const [open, setOpen] = React.useState(false);
     const [samples, setSamples] = useState([]);
     const anchorRef = React.useRef(null);
+    const confirm = useConfirm();
 
     useEffect(() => {
         const fetchSamples = async () => {
@@ -70,8 +72,14 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
 
     const loadSample = async (level) => {
         if (changed) {
-            const confirm = window.confirm('Are you sure you want to load this sample? Your current inputs will be overwritten.');
-            if (!confirm) return;
+            const ok = await confirm({
+                title: 'Replace current test?',
+                message: 'Loading this sample will overwrite the test you have in the form.',
+                confirmText: 'Load sample',
+                cancelText: 'Keep current',
+                severity: 'warning',
+            });
+            if (!ok) return;
         }
         await setInputs({ ...base, ...samples[level] });
         setChanged(false);

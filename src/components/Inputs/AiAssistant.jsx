@@ -17,6 +17,7 @@ import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import useAtomicIndex from '../../hooks/useAtomicIndex';
 import useLlmSettings from '../../hooks/useLlmSettings';
+import { useConfirm } from '../ConfirmDialog';
 import { mergeTechniqueAndTestIntoForm } from '../../utils/aiResponseValidator';
 import AiPromptDialog from './AiPromptDialog';
 import AiSettingsDialog from './AiSettingsDialog';
@@ -36,6 +37,7 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
 
     const { data, loading: indexLoading, error: indexError } = useAtomicIndex();
     const settings = useLlmSettings();
+    const confirm = useConfirm();
 
     React.useEffect(() => {
         const t = setTimeout(() => setDebouncedQuery(query.trim()), DEBOUNCE_MS);
@@ -65,9 +67,13 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
 
     const loadSuggestion = async (item) => {
         if (changed) {
-            const ok = window.confirm(
-                'Loading this test will overwrite your current inputs. Continue?'
-            );
+            const ok = await confirm({
+                title: 'Replace current test?',
+                message: `Loading "${item.testName}" (${item.tid}) will overwrite the test you have in the form.`,
+                confirmText: 'Load test',
+                cancelText: 'Keep current',
+                severity: 'warning',
+            });
             if (!ok) return;
         }
         setError(null);

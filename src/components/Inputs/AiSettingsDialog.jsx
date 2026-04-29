@@ -14,6 +14,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
 import { PROVIDER_LIST } from '../../utils/llm';
+import { useConfirm } from '../ConfirmDialog';
 
 export default function AiSettingsDialog({
     open,
@@ -30,6 +31,7 @@ export default function AiSettingsDialog({
     const [draftKey, setDraftKey] = React.useState(apiKey);
     const [testing, setTesting] = React.useState(false);
     const [testResult, setTestResult] = React.useState(null); // { ok: bool, message }
+    const confirm = useConfirm();
 
     React.useEffect(() => {
         setDraftKey(apiKey);
@@ -169,8 +171,14 @@ export default function AiSettingsDialog({
             <DialogActions>
                 <Button
                     color="warning"
-                    onClick={() => {
-                        const ok = window.confirm('Remove API key from this browser?');
+                    onClick={async () => {
+                        const ok = await confirm({
+                            title: 'Remove API key?',
+                            message: `This will delete your ${provider.name} API key from this browser. You'll need to re-enter it the next time you use AI generation.`,
+                            confirmText: 'Remove key',
+                            cancelText: 'Cancel',
+                            severity: 'danger',
+                        });
                         if (ok) { clearKey(); setDraftKey(''); setTestResult(null); }
                     }}
                 >

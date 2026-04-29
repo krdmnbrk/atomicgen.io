@@ -19,6 +19,7 @@ import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded';
 import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded';
 import { SYSTEM_PROMPT, buildTechniqueIndexBlock } from '../../utils/atContext';
 import { validateGeneratedTest, toAppFormShape } from '../../utils/aiResponseValidator';
+import { useConfirm } from '../ConfirmDialog';
 
 const MAX_PROMPT_LEN = 2000;
 const MAX_REFINE_LEN = 500;
@@ -215,6 +216,7 @@ export default function AiPromptDialog({
     const [refineText, setRefineText] = React.useState('');
     const abortRef = React.useRef(null);
     const isMobile = useMediaQuery('(max-width: 600px)');
+    const confirm = useConfirm();
 
     const currentVersion = versions[activeVersion] || null;
     const result = currentVersion?.data || null;
@@ -1168,11 +1170,15 @@ export default function AiPromptDialog({
                     <Tooltip title="Discard versions and start a new generation from this prompt">
                         <IconButton
                             size="small"
-                            onClick={() => {
+                            onClick={async () => {
                                 if (versions.length > 1) {
-                                    const ok = window.confirm(
-                                        `Discard all ${versions.length} versions and start a new generation?`
-                                    );
+                                    const ok = await confirm({
+                                        title: 'Discard refine history?',
+                                        message: `You have ${versions.length} versions (v1–v${versions.length}). Starting a new generation will discard all of them.`,
+                                        confirmText: 'Start over',
+                                        cancelText: 'Keep history',
+                                        severity: 'danger',
+                                    });
                                     if (!ok) return;
                                 }
                                 generate();
