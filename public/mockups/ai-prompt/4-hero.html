@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>AI prompt — Hero preview</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #07080B;
+    --text: #F0F2F5;
+    --text-muted: #9AA3AE;
+    --text-faint: #5E6772;
+    --accent: #FF5C39;
+    --accent-2: #FF8A66;
+    --accent-soft: rgba(255, 92, 57, 0.15);
+    --glass: rgba(20, 24, 32, 0.55);
+    --glass-strong: rgba(20, 24, 32, 0.78);
+    --glass-stroke: rgba(255, 255, 255, 0.10);
+    --success: #4DDD96;
+    --info: #6FA9FF;
+    --warning: #F5B74E;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: -1;
+    background: radial-gradient(ellipse 70% 60% at 18% 12%, rgba(99, 65, 175, 0.28), transparent 65%),
+                radial-gradient(ellipse 80% 70% at 86% 90%, rgba(48, 110, 190, 0.22), transparent 65%);
+  }
+  code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+  .compare-strip {
+    background: var(--glass); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    border-bottom: 1px solid var(--glass-stroke); padding: 8px 24px;
+    font-size: 12px; color: var(--text-muted); display: flex; gap: 16px; align-items: center;
+  }
+  .compare-strip strong { color: var(--text); }
+  .compare-strip a { color: var(--accent); text-decoration: none; }
+  .compare-strip .badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); letter-spacing: 0.04em; text-transform: uppercase; }
+  .compare-strip .right { margin-left: auto; }
+
+  .stage {
+    display: grid; place-items: center;
+    min-height: calc(100vh - 40px);
+    padding: 30px 20px;
+  }
+  .dialog {
+    width: 100%; max-width: 1100px;
+    background: rgba(14, 16, 22, 0.72);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 20px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 32px 80px -16px rgba(0,0,0,0.7);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    height: 740px;
+    max-height: calc(100vh - 60px);
+  }
+
+  /* Top: collapsed prompt summary */
+  .summary {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--glass-stroke);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .summary .ai-glow {
+    width: 32px; height: 32px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: grid; place-items: center;
+    color: white;
+    box-shadow: 0 6px 16px -6px var(--accent), inset 0 1px 0 rgba(255,255,255,0.3);
+    flex-shrink: 0;
+  }
+  .summary .prompt-text {
+    flex: 1; min-width: 0;
+    color: var(--text);
+    font-size: 14px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .summary .prompt-text strong { font-weight: 500; }
+  .summary .prompt-text .tag {
+    color: var(--text-faint);
+    margin-right: 8px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+  }
+  .summary .edit-btn {
+    background: transparent; border: 1px solid var(--glass-stroke);
+    color: var(--text-muted);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font: inherit; font-size: 12px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .summary .edit-btn:hover { color: var(--text); border-color: var(--glass-stroke-strong); }
+  .summary .close-btn {
+    width: 30px; height: 30px;
+    background: transparent; border: 1px solid var(--glass-stroke);
+    border-radius: 8px; color: var(--text-muted); cursor: pointer;
+    display: grid; place-items: center;
+  }
+
+  /* Body — hero + side rail */
+  .body {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* Hero YAML */
+  .hero {
+    overflow: auto;
+    padding: 0;
+    position: relative;
+    background: rgba(0, 0, 0, 0.18);
+  }
+  .hero-head {
+    position: sticky; top: 0;
+    background: rgba(14, 16, 22, 0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--glass-stroke);
+    padding: 14px 22px;
+    display: flex; align-items: center; gap: 12px;
+    z-index: 5;
+  }
+  .tid-pill {
+    display: inline-flex; align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 500;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 3px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 92, 57, 0.3);
+  }
+  .technique-name { font-weight: 600; font-size: 14px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Variant pill bar */
+  .variant-bar {
+    position: sticky; top: 53px;
+    background: rgba(14, 16, 22, 0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--glass-stroke);
+    padding: 8px 22px;
+    display: flex; gap: 6px;
+    z-index: 4;
+  }
+  .vpill {
+    background: transparent;
+    border: 1px solid var(--glass-stroke);
+    padding: 5px 12px;
+    border-radius: 14px;
+    font: inherit; font-size: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .vpill:hover { background: var(--glass-strong); color: var(--text); }
+  .vpill.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: rgba(255, 92, 57, 0.5);
+    font-weight: 500;
+  }
+  .vpill .pdot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.7; }
+
+  .yaml {
+    padding: 20px 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; line-height: 1.7;
+    white-space: pre;
+  }
+  .yk { color: var(--info); } .ys { color: var(--success); } .yn { color: var(--warning); } .yc { color: var(--text-faint); font-style: italic; } .ya { color: var(--accent); font-weight: 500; }
+
+  /* Side rail */
+  .rail {
+    border-left: 1px solid var(--glass-stroke);
+    overflow: auto;
+    display: flex; flex-direction: column;
+  }
+  .rail-section {
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--glass-stroke);
+  }
+  .rail-section:last-child { border-bottom: none; }
+  .rail-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .rail-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 0;
+    font-size: 12px;
+  }
+  .rail-row .k { color: var(--text-muted); }
+  .rail-row .v { color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .rail-row .v.ok { color: var(--success); }
+  .rail-row .v.warn { color: var(--warning); }
+  .rail-row .v.danger { color: var(--accent); }
+
+  .rail-checks {
+    display: flex; flex-direction: column; gap: 7px;
+  }
+  .rail-check {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px;
+    color: var(--text);
+  }
+  .rail-check .ico {
+    width: 14px; height: 14px; flex-shrink: 0;
+    display: grid; place-items: center;
+  }
+  .rail-check.ok .ico { color: var(--success); }
+  .rail-check .label { flex: 1; }
+  .rail-check .val { color: var(--text-faint); font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+
+  /* Footer */
+  .foot {
+    padding: 12px 20px;
+    border-top: 1px solid var(--glass-stroke);
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px;
+  }
+  .foot .left { font-size: 11px; color: var(--text-faint); }
+  .foot .actions { display: flex; gap: 8px; }
+  .btn-ghost {
+    background: transparent; border: 1px solid var(--glass-stroke);
+    color: var(--text); border-radius: 8px;
+    padding: 7px 14px; font: inherit; font-size: 13px; font-weight: 500;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border: none; color: white;
+    padding: 7px 16px; border-radius: 8px;
+    font: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 14px -4px var(--accent), inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+</style>
+</head>
+<body>
+
+<div class="compare-strip">
+  <span class="badge">AI · 04</span>
+  <strong>Hero preview + side rail</strong>
+  <span style="color: var(--text-faint);">— YAML is the hero, prompt collapses, meta info on the right</span>
+  <span class="right">
+    <a href="index.html">← All 5</a>
+  </span>
+</div>
+
+<div class="stage">
+  <div class="dialog">
+    <!-- Collapsed prompt summary -->
+    <div class="summary">
+      <div class="ai-glow">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/></svg>
+      </div>
+      <div class="prompt-text"><span class="tag">PROMPT</span><strong>splunk universalforwarder disabling</strong></div>
+      <button class="edit-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Edit
+      </button>
+      <button class="close-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="body">
+      <!-- Hero -->
+      <div class="hero">
+        <div class="hero-head">
+          <span class="tid-pill">T1562.001</span>
+          <span class="technique-name">Impair Defenses: Disable or Modify Tools</span>
+        </div>
+        <div class="variant-bar">
+          <button class="vpill active"><span class="pdot"></span>windows</button>
+          <button class="vpill"><span class="pdot"></span>linux</button>
+          <button class="vpill"><span class="pdot"></span>macos</button>
+        </div>
+        <div class="yaml"><span class="yc"># Disable Splunk Universal Forwarder (Windows)</span>
+<span class="yk">attack_technique</span>: <span class="ys">T1562.001</span>
+<span class="yk">display_name</span>: <span class="ys">Impair Defenses: Disable or Modify Tools</span>
+<span class="yk">atomic_tests</span>:
+  - <span class="yk">name</span>: <span class="ys">Disable Splunk Universal Forwarder (Windows)</span>
+    <span class="yk">description</span>: <span class="ys">|</span>
+      <span class="ys">Stops and disables the SplunkForwarder Windows
+      service via sc.exe, simulating an adversary impairing
+      endpoint telemetry.</span>
+    <span class="yk">supported_platforms</span>:
+      - <span class="ys">windows</span>
+    <span class="yk">input_arguments</span>:
+      <span class="yk">service_name</span>:
+        <span class="yk">type</span>: <span class="ys">string</span>
+        <span class="yk">default</span>: <span class="ys">SplunkForwarder</span>
+        <span class="yk">description</span>: <span class="ys">Windows service name</span>
+    <span class="yk">executor</span>:
+      <span class="yk">name</span>: <span class="ys">command_prompt</span>
+      <span class="yk">command</span>: <span class="ys">|</span>
+        <span class="ys">sc stop </span><span class="ya">#{service_name}</span>
+        <span class="ys">sc config </span><span class="ya">#{service_name}</span><span class="ys"> start= disabled</span>
+      <span class="yk">cleanup_command</span>: <span class="ys">|</span>
+        <span class="ys">sc config </span><span class="ya">#{service_name}</span><span class="ys"> start= auto >nul 2>&amp;1</span>
+        <span class="ys">sc start </span><span class="ya">#{service_name}</span><span class="ys"> >nul 2>&amp;1</span>
+      <span class="yk">elevation_required</span>: <span class="ys">true</span>
+    <span class="yk">auto_generated_guid</span>: <span class="ys">11111111-2222-4333-8444-555555555555</span></div>
+      </div>
+
+      <!-- Side rail -->
+      <div class="rail">
+        <div class="rail-section">
+          <div class="rail-label">Active variant</div>
+          <div class="rail-row">
+            <span class="k">Platform</span>
+            <span class="v">windows</span>
+          </div>
+          <div class="rail-row">
+            <span class="k">Executor</span>
+            <span class="v">command_prompt</span>
+          </div>
+          <div class="rail-row">
+            <span class="k">Elevation</span>
+            <span class="v warn">required</span>
+          </div>
+          <div class="rail-row">
+            <span class="k">Input args</span>
+            <span class="v">1</span>
+          </div>
+          <div class="rail-row">
+            <span class="k">Cleanup</span>
+            <span class="v ok">defined</span>
+          </div>
+        </div>
+
+        <div class="rail-section">
+          <div class="rail-label">Validation</div>
+          <div class="rail-checks">
+            <div class="rail-check ok">
+              <span class="ico">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              <span class="label">T-ID format</span>
+              <span class="val">T1562.001</span>
+            </div>
+            <div class="rail-check ok">
+              <span class="ico">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              <span class="label">Placeholders</span>
+              <span class="val">1/1 declared</span>
+            </div>
+            <div class="rail-check ok">
+              <span class="ico">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              <span class="label">Executor + platform</span>
+              <span class="val">match</span>
+            </div>
+            <div class="rail-check ok">
+              <span class="ico">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              <span class="label">UUID v4</span>
+              <span class="val">unique</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="rail-section">
+          <div class="rail-label">Provider</div>
+          <div class="rail-row">
+            <span class="k">Vendor</span>
+            <span class="v">Anthropic</span>
+          </div>
+          <div class="rail-row">
+            <span class="k">Model</span>
+            <span class="v">sonnet-4-6</span>
+          </div>
+          <div class="rail-row">
+            <span class="k">Cache</span>
+            <span class="v ok">hit · 96%</span>
+          </div>
+          <div class="rail-row">
+            <span class="k">Latency</span>
+            <span class="v">2.4s</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span class="left">⌘↵ regen · ⌘1/2/3 switch · ↵ apply · Esc close</span>
+      <div class="actions">
+        <button class="btn-ghost">Close</button>
+        <button class="btn-primary">Apply Windows variant →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

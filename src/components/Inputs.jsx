@@ -167,6 +167,16 @@ function Inputs({
         Boolean(inputs.executor?.cleanup_command) ||
         (Array.isArray(inputs.dependencies) && inputs.dependencies.length > 0);
 
+    // Controlled accordion: auto-sync with content presence; allow manual toggle.
+    const [lifecycleExpanded, setLifecycleExpanded] = React.useState(lifecycleHasContent);
+    const prevLifecycleHasContent = React.useRef(lifecycleHasContent);
+    React.useEffect(() => {
+        if (lifecycleHasContent !== prevLifecycleHasContent.current) {
+            setLifecycleExpanded(lifecycleHasContent);
+            prevLifecycleHasContent.current = lifecycleHasContent;
+        }
+    }, [lifecycleHasContent]);
+
     return (
         <Box>
             {/* Top buttons (Load Sample / Upload YAML / Load from Repo) */}
@@ -379,9 +389,10 @@ function Inputs({
                 </Box>
             </Paper>
 
-            {/* ─── LIFECYCLE (collapsible) ─── */}
+            {/* ─── SETUP & CLEANUP (collapsible) ─── */}
             <Accordion
-                defaultExpanded={lifecycleHasContent}
+                expanded={lifecycleExpanded}
+                onChange={(_, isExpanded) => setLifecycleExpanded(isExpanded)}
                 disableGutters
                 square={false}
                 elevation={0}
@@ -414,10 +425,10 @@ function Inputs({
                         <Box sx={{ color: 'primary.main', display: 'flex' }}>
                             <CleaningServicesOutlinedIcon sx={{ fontSize: 16 }} />
                         </Box>
-                        Lifecycle
+                        Setup &amp; Cleanup
                     </Box>
                     <Typography sx={{ fontSize: 11, color: 'var(--text-faint)', mr: 1 }}>
-                        cleanup · dependencies · optional
+                        dependencies &amp; cleanup · optional
                     </Typography>
                 </AccordionSummary>
                 <AccordionDetails sx={{ px: 2.5, pt: 0, pb: 2.5, borderTop: '1px solid var(--glass-stroke)' }}>

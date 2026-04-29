@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>AI prompt — Variant cards</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #07080B;
+    --text: #F0F2F5;
+    --text-muted: #9AA3AE;
+    --text-faint: #5E6772;
+    --accent: #FF5C39;
+    --accent-2: #FF8A66;
+    --accent-soft: rgba(255, 92, 57, 0.15);
+    --glass: rgba(20, 24, 32, 0.55);
+    --glass-strong: rgba(20, 24, 32, 0.78);
+    --glass-stroke: rgba(255, 255, 255, 0.10);
+    --success: #4DDD96;
+    --info: #6FA9FF;
+    --warning: #F5B74E;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: -1;
+    background: radial-gradient(ellipse 70% 60% at 18% 12%, rgba(99, 65, 175, 0.28), transparent 65%),
+                radial-gradient(ellipse 80% 70% at 86% 90%, rgba(48, 110, 190, 0.22), transparent 65%);
+  }
+  code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+  .compare-strip {
+    background: var(--glass); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    border-bottom: 1px solid var(--glass-stroke); padding: 8px 24px;
+    font-size: 12px; color: var(--text-muted); display: flex; gap: 16px; align-items: center;
+  }
+  .compare-strip strong { color: var(--text); }
+  .compare-strip a { color: var(--accent); text-decoration: none; }
+  .compare-strip .badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); letter-spacing: 0.04em; text-transform: uppercase; }
+  .compare-strip .right { margin-left: auto; }
+
+  .stage {
+    display: grid; place-items: center;
+    min-height: calc(100vh - 40px);
+    padding: 30px 20px;
+  }
+  .dialog {
+    width: 100%; max-width: 820px;
+    background: rgba(14, 16, 22, 0.72);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 20px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 32px 80px -16px rgba(0,0,0,0.7);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    max-height: calc(100vh - 60px);
+  }
+
+  /* Header */
+  .head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--glass-stroke);
+  }
+  .head .icon { color: var(--accent); display: flex; }
+  .head .title { font-size: 15px; font-weight: 600; flex: 1; }
+  .head .meta { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+  .head .icon-btn {
+    width: 30px; height: 30px;
+    background: transparent; border: 1px solid var(--glass-stroke);
+    border-radius: 8px; color: var(--text-muted); cursor: pointer;
+    display: grid; place-items: center;
+  }
+
+  .body {
+    flex: 1; overflow: auto;
+    padding: 20px;
+  }
+
+  /* Prompt strip */
+  .prompt-strip {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 12px;
+    padding: 4px 4px 4px 14px;
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 18px;
+    transition: border-color 0.12s, box-shadow 0.12s;
+  }
+  .prompt-strip:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-soft);
+  }
+  .prompt-strip .ai-icon {
+    color: var(--accent);
+    flex-shrink: 0;
+    display: flex;
+  }
+  .prompt-strip input {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--text); font: inherit; font-size: 14px;
+    padding: 8px 0;
+  }
+  .prompt-strip input::placeholder { color: var(--text-faint); }
+  .prompt-strip .gen-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border: none; color: white;
+    padding: 8px 14px; border-radius: 9px;
+    font-weight: 600; font-size: 13px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    box-shadow: 0 4px 14px -4px var(--accent), inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+  .prompt-strip .gen-btn kbd { background: rgba(0,0,0,0.22); padding: 1px 4px; border-radius: 3px; font: inherit; font-size: 10px; }
+
+  /* Result header */
+  .result-head {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 14px;
+  }
+  .tid-pill {
+    display: inline-flex; align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 500;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 92, 57, 0.3);
+  }
+  .technique-name { font-weight: 600; font-size: 15px; flex: 1; min-width: 0; }
+  .errors-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--success);
+    background: rgba(77, 221, 150, 0.10);
+    border: 1px solid rgba(77, 221, 150, 0.28);
+    padding: 3px 9px; border-radius: 12px;
+  }
+  .errors-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px var(--success); }
+
+  .hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .hint svg { color: var(--info); }
+
+  /* Variant cards */
+  .cards {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .vcard {
+    background: var(--glass-strong);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.12s, transform 0.12s, box-shadow 0.12s;
+    cursor: pointer;
+  }
+  .vcard:hover {
+    border-color: var(--glass-stroke-strong);
+    transform: translateY(-1px);
+  }
+  .vcard.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent), 0 8px 24px -8px rgba(255, 92, 57, 0.4);
+    background: rgba(255, 92, 57, 0.05);
+  }
+  .vcard-head {
+    padding: 12px 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .vradio {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: 1.5px solid var(--text-faint);
+    flex-shrink: 0;
+    position: relative;
+    transition: border-color 0.12s;
+  }
+  .vcard.selected .vradio {
+    border-color: var(--accent);
+  }
+  .vcard.selected .vradio::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .vcard-title { flex: 1; font-weight: 500; font-size: 14px; }
+  .platform-chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--glass);
+    border: 1px solid var(--glass-stroke);
+    color: var(--text-muted);
+  }
+  .platform-chip.windows { color: #6FA9FF; border-color: rgba(111, 169, 255, 0.3); background: rgba(111, 169, 255, 0.08); }
+  .platform-chip.linux { color: #F5B74E; border-color: rgba(245, 183, 78, 0.3); background: rgba(245, 183, 78, 0.08); }
+  .platform-chip.macos { color: #4DDD96; border-color: rgba(77, 221, 150, 0.3); background: rgba(77, 221, 150, 0.08); }
+
+  .vcard-meta { font-size: 11px; color: var(--text-faint); display: flex; gap: 8px; align-items: center; font-family: 'JetBrains Mono', monospace; }
+  .vcard-meta .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--text-faint); }
+
+  .vcard-body {
+    padding: 0 16px 14px 44px;
+    display: none;
+  }
+  .vcard.selected .vcard-body { display: block; }
+  .vcard-cmd {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; line-height: 1.65;
+    color: var(--text);
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .tok-cmd { color: var(--info); }
+  .tok-arg { color: var(--accent); font-weight: 500; }
+  .tok-flag { color: var(--warning); }
+  .tok-c { color: var(--text-faint); font-style: italic; }
+
+  .vcard-stats {
+    display: flex; gap: 14px;
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .vcard-stats span svg { vertical-align: -2px; margin-right: 3px; opacity: 0.6; }
+  .vcard-stats .elevated { color: var(--warning); }
+
+  /* Footer */
+  .foot {
+    padding: 12px 20px;
+    border-top: 1px solid var(--glass-stroke);
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px;
+  }
+  .foot .left { font-size: 11px; color: var(--text-faint); }
+  .foot .actions { display: flex; gap: 8px; }
+  .btn-ghost {
+    background: transparent; border: 1px solid var(--glass-stroke);
+    color: var(--text); border-radius: 8px;
+    padding: 7px 14px; font: inherit; font-size: 13px; font-weight: 500;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border: none; color: white;
+    padding: 7px 16px; border-radius: 8px;
+    font: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 14px -4px var(--accent), inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+</style>
+</head>
+<body>
+
+<div class="compare-strip">
+  <span class="badge">AI · 03</span>
+  <strong>Variant cards</strong>
+  <span style="color: var(--text-faint);">— Each platform variant as a selectable card with command preview</span>
+  <span class="right">
+    <a href="index.html">← All 5</a>
+  </span>
+</div>
+
+<div class="stage">
+  <div class="dialog">
+    <div class="head">
+      <div class="icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/></svg>
+      </div>
+      <div class="title">Generate atomic test with AI</div>
+      <span class="meta">Anthropic · sonnet-4-6</span>
+      <button class="icon-btn" title="Settings">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+      </button>
+    </div>
+
+    <div class="body">
+      <!-- Prompt strip -->
+      <div class="prompt-strip">
+        <div class="ai-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/></svg>
+        </div>
+        <input type="text" value="splunk universalforwarder disabling" />
+        <button class="gen-btn">Regenerate <kbd>⌘↵</kbd></button>
+      </div>
+
+      <!-- Result header -->
+      <div class="result-head">
+        <span class="tid-pill">T1562.001</span>
+        <span class="technique-name">Impair Defenses: Disable or Modify Tools</span>
+        <span class="errors-pill"><span class="dot"></span>0 errors</span>
+      </div>
+
+      <div class="hint">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        3 platform variants generated. Pick one to apply to the form.
+      </div>
+
+      <!-- Cards -->
+      <div class="cards">
+        <div class="vcard selected">
+          <div class="vcard-head">
+            <span class="vradio"></span>
+            <span class="vcard-title">Disable Splunk Universal Forwarder</span>
+            <span class="platform-chip windows">windows</span>
+          </div>
+          <div class="vcard-body">
+            <div class="vcard-cmd"><span class="tok-c"># attack command</span>
+<span class="tok-cmd">sc</span> stop <span class="tok-arg">#{service_name}</span>
+<span class="tok-cmd">sc</span> config <span class="tok-arg">#{service_name}</span> <span class="tok-flag">start=</span> disabled</div>
+            <div class="vcard-stats">
+              <span>📦 command_prompt</span>
+              <span class="elevated">🔒 elevation required</span>
+              <span>💾 cleanup defined</span>
+              <span>⚙ 1 input arg</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="vcard">
+          <div class="vcard-head">
+            <span class="vradio"></span>
+            <span class="vcard-title">Disable Splunk Universal Forwarder</span>
+            <span class="platform-chip linux">linux</span>
+          </div>
+        </div>
+
+        <div class="vcard">
+          <div class="vcard-head">
+            <span class="vradio"></span>
+            <span class="vcard-title">Disable Splunk Universal Forwarder</span>
+            <span class="platform-chip macos">macos</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span class="left">⌘↵ regen · ↑↓ navigate · ↵ apply selected · Esc close</span>
+      <div class="actions">
+        <button class="btn-ghost">Close</button>
+        <button class="btn-primary">Apply selected →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

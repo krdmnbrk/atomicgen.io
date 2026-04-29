@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>AI prompt — 5 designs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #07080B;
+    --text: #F0F2F5;
+    --text-muted: #9AA3AE;
+    --text-faint: #5E6772;
+    --accent: #FF5C39;
+    --accent-2: #FF8A66;
+    --accent-soft: rgba(255, 92, 57, 0.15);
+    --glass: rgba(20, 24, 32, 0.55);
+    --glass-strong: rgba(20, 24, 32, 0.78);
+    --glass-stroke: rgba(255, 255, 255, 0.10);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: -1;
+    background: radial-gradient(ellipse 70% 60% at 18% 12%, rgba(99, 65, 175, 0.28), transparent 65%),
+                radial-gradient(ellipse 80% 70% at 86% 90%, rgba(48, 110, 190, 0.22), transparent 65%);
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 60px 24px 40px; }
+  .header { margin-bottom: 40px; }
+  .kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.10em; text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  h1 { font-size: 36px; font-weight: 600; margin: 0 0 10px; letter-spacing: -0.02em; }
+  .lede { color: var(--text-muted); font-size: 16px; max-width: 640px; line-height: 1.5; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  .card {
+    background: var(--glass);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 16px;
+    padding: 24px;
+    text-decoration: none;
+    color: var(--text);
+    transition: all 0.18s;
+    display: flex; flex-direction: column;
+  }
+  .card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 16px 40px -8px rgba(0,0,0,0.4), 0 0 0 1px rgba(255, 92, 57, 0.2);
+  }
+  .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    margin-bottom: 8px;
+    letter-spacing: 0.10em;
+    font-weight: 600;
+  }
+  .title { font-size: 20px; font-weight: 600; margin: 0 0 8px; letter-spacing: -0.01em; }
+  .desc { color: var(--text-muted); font-size: 13px; line-height: 1.5; margin: 0 0 14px; flex: 1; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag {
+    font-size: 10px;
+    color: var(--text-muted);
+    background: rgba(0,0,0,0.25);
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--glass-stroke);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .tag.hero {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: rgba(255, 92, 57, 0.3);
+  }
+
+  .footer-link {
+    margin-top: 24px;
+    text-align: center;
+    color: var(--text-faint);
+    font-size: 12px;
+  }
+  .footer-link a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="header">
+    <div class="kicker">— AI prompt dialog</div>
+    <h1>5 design directions</h1>
+    <p class="lede">Each mockup uses the same example data: prompt <code>"splunk universalforwarder disabling"</code> generating T1562.001 with 3 platform variants.</p>
+  </div>
+
+  <div class="grid">
+    <a class="card" href="1-chat.html">
+      <div class="num">AI · 01</div>
+      <div class="title">Chat-style</div>
+      <div class="desc">Claude.ai-like conversational thread. User and AI bubbles, generated test embedded in the assistant message. Composer bar at the bottom for follow-ups.</div>
+      <div class="tags">
+        <span class="tag hero">Conversational</span>
+        <span class="tag">Composer</span>
+        <span class="tag">Refine-ready</span>
+      </div>
+    </a>
+
+    <a class="card" href="2-split.html">
+      <div class="num">AI · 02</div>
+      <div class="title">Split panel</div>
+      <div class="desc">IDE-like layout. Sidebar with prompt input, recent prompts, and provider settings. Main area with technique header, variant tabs, YAML preview.</div>
+      <div class="tags">
+        <span class="tag hero">IDE</span>
+        <span class="tag">Prompt history</span>
+        <span class="tag">Multi-tab</span>
+      </div>
+    </a>
+
+    <a class="card" href="3-cards.html">
+      <div class="num">AI · 03</div>
+      <div class="title">Variant cards</div>
+      <div class="desc">No tabs. Each platform variant is a stacked card with a radio selector. Selected card expands to show the command and stats. Reads like a list of choices.</div>
+      <div class="tags">
+        <span class="tag hero">Cards</span>
+        <span class="tag">Radio select</span>
+        <span class="tag">Scannable</span>
+      </div>
+    </a>
+
+    <a class="card" href="4-hero.html">
+      <div class="num">AI · 04</div>
+      <div class="title">Hero preview + side rail</div>
+      <div class="desc">YAML is the hero. Prompt collapses into a one-line summary at top. Right rail shows active variant info, validation checks, and provider stats.</div>
+      <div class="tags">
+        <span class="tag hero">YAML-first</span>
+        <span class="tag">Side rail</span>
+        <span class="tag">Validation panel</span>
+      </div>
+    </a>
+
+    <a class="card" href="5-minimal.html">
+      <div class="num">AI · 05</div>
+      <div class="title">Minimal palette</div>
+      <div class="desc">Power-user style. Tight command bar at top, status row, segmented variant control with keyboard shortcuts visible, footer cheatsheet for shortcuts.</div>
+      <div class="tags">
+        <span class="tag hero">Keyboard-driven</span>
+        <span class="tag">Compact</span>
+        <span class="tag">Power-user</span>
+      </div>
+    </a>
+  </div>
+
+  <div class="footer-link">
+    Comparing with <a href="/">live app</a> · go back to <a href="../1-bento.html">app-level mockups</a>
+  </div>
+</div>
+
+</body>
+</html>

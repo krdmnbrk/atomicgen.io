@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>AI prompt — Chat-style</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #07080B;
+    --text: #F0F2F5;
+    --text-muted: #9AA3AE;
+    --text-faint: #5E6772;
+    --accent: #FF5C39;
+    --accent-2: #FF8A66;
+    --accent-soft: rgba(255, 92, 57, 0.15);
+    --glass: rgba(20, 24, 32, 0.55);
+    --glass-strong: rgba(20, 24, 32, 0.78);
+    --glass-stroke: rgba(255, 255, 255, 0.10);
+    --glass-stroke-strong: rgba(255, 255, 255, 0.16);
+    --success: #4DDD96;
+    --info: #6FA9FF;
+    --warning: #F5B74E;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: -1;
+    background: radial-gradient(ellipse 70% 60% at 18% 12%, rgba(99, 65, 175, 0.28), transparent 65%),
+                radial-gradient(ellipse 80% 70% at 86% 90%, rgba(48, 110, 190, 0.22), transparent 65%);
+  }
+  code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+  .compare-strip {
+    background: var(--glass); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    border-bottom: 1px solid var(--glass-stroke); padding: 8px 24px;
+    font-size: 12px; color: var(--text-muted); display: flex; gap: 16px; align-items: center;
+  }
+  .compare-strip strong { color: var(--text); }
+  .compare-strip a { color: var(--accent); text-decoration: none; }
+  .compare-strip .badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); letter-spacing: 0.04em; text-transform: uppercase; }
+  .compare-strip .right { margin-left: auto; }
+
+  .stage {
+    display: grid; place-items: center;
+    min-height: calc(100vh - 40px);
+    padding: 40px 20px;
+  }
+  .dialog {
+    width: 100%; max-width: 720px;
+    background: rgba(14, 16, 22, 0.72);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 20px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 32px 80px -16px rgba(0,0,0,0.7);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    max-height: calc(100vh - 80px);
+  }
+
+  /* Header */
+  .head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--glass-stroke);
+  }
+  .head .avatar {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: grid; place-items: center; color: white;
+    box-shadow: 0 4px 14px -4px var(--accent), inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+  .head .title { font-size: 15px; font-weight: 600; flex: 1; }
+  .head .meta { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+  .head .icon-btn {
+    width: 30px; height: 30px;
+    background: transparent; border: 1px solid var(--glass-stroke);
+    border-radius: 8px; color: var(--text-muted); cursor: pointer;
+    display: grid; place-items: center;
+    transition: all 0.12s;
+  }
+  .head .icon-btn:hover { background: var(--glass-strong); color: var(--text); }
+
+  /* Conversation thread */
+  .thread {
+    flex: 1;
+    overflow: auto;
+    padding: 20px 18px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .msg { display: flex; gap: 12px; align-items: flex-start; }
+  .msg .bubble-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: grid; place-items: center;
+    font-size: 12px; font-weight: 600;
+  }
+  .msg.user .bubble-avatar {
+    background: var(--glass-strong);
+    color: var(--text-muted);
+    border: 1px solid var(--glass-stroke);
+  }
+  .msg.ai .bubble-avatar {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: white;
+    box-shadow: 0 0 0 2px rgba(255, 92, 57, 0.15);
+  }
+  .msg .bubble {
+    background: var(--glass-strong);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 12px;
+    padding: 12px 14px;
+    flex: 1;
+    min-width: 0;
+  }
+  .msg.user .bubble { background: rgba(255, 92, 57, 0.08); border-color: rgba(255, 92, 57, 0.25); }
+  .msg .bubble-author { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; letter-spacing: 0.04em; text-transform: uppercase; }
+  .msg.ai .bubble-author { color: var(--accent); }
+  .msg .bubble-text { font-size: 14px; line-height: 1.45; color: var(--text); }
+
+  /* Generated test card inside AI bubble */
+  .test-card {
+    margin-top: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .test-card .test-head {
+    padding: 10px 14px;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--glass-stroke);
+    background: var(--glass);
+  }
+  .tid-pill {
+    display: inline-flex; align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 500;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 92, 57, 0.3);
+  }
+  .test-name { font-weight: 500; font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .variant-count {
+    font-size: 11px; color: var(--text-muted);
+  }
+
+  /* Variant pills (segmented) */
+  .variants {
+    display: flex;
+    gap: 4px;
+    padding: 8px;
+    background: var(--glass);
+    border-bottom: 1px solid var(--glass-stroke);
+  }
+  .variant-pill {
+    flex: 1;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 7px 10px;
+    font: inherit; font-size: 12px;
+    cursor: pointer;
+    color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: all 0.12s;
+  }
+  .variant-pill:hover { background: var(--glass-strong); color: var(--text); }
+  .variant-pill.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: rgba(255, 92, 57, 0.4);
+    font-weight: 500;
+  }
+  .platform-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor; opacity: 0.6;
+  }
+
+  /* YAML preview */
+  .yaml {
+    padding: 14px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; line-height: 1.65;
+    max-height: 220px;
+    overflow: auto;
+    white-space: pre;
+  }
+  .yk { color: var(--info); } .ys { color: var(--success); } .yn { color: var(--warning); } .yc { color: var(--text-faint); font-style: italic; } .ya { color: var(--accent); font-weight: 500; }
+
+  /* Composer (chat input bar) */
+  .composer {
+    border-top: 1px solid var(--glass-stroke);
+    padding: 12px 14px;
+  }
+  .composer-bar {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 12px;
+    padding: 6px 6px 6px 14px;
+    transition: border-color 0.12s, box-shadow 0.12s;
+  }
+  .composer-bar:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-soft);
+  }
+  .composer-bar input {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--text); font: inherit; font-size: 14px;
+    padding: 6px 0;
+  }
+  .composer-bar input::placeholder { color: var(--text-faint); }
+  .composer-bar .send {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border: none; color: white;
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: grid; place-items: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px -4px var(--accent), inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+  .composer-meta {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+  .composer-meta .apply {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-weight: 600; font-size: 12px;
+    cursor: pointer;
+    box-shadow: 0 4px 14px -4px var(--accent);
+  }
+  .composer-meta .apply:hover { background: var(--accent-2); }
+</style>
+</head>
+<body>
+
+<div class="compare-strip">
+  <span class="badge">AI · 01</span>
+  <strong>Chat-style</strong>
+  <span style="color: var(--text-faint);">— Claude.ai-like conversational thread, composer at bottom</span>
+  <span class="right">
+    <a href="index.html">← All 5</a>
+  </span>
+</div>
+
+<div class="stage">
+  <div class="dialog">
+    <!-- Header -->
+    <div class="head">
+      <div class="avatar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/></svg>
+      </div>
+      <div class="title">AI test composer</div>
+      <span class="meta">Anthropic · sonnet-4-6</span>
+      <button class="icon-btn" title="Settings">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+      </button>
+    </div>
+
+    <!-- Thread -->
+    <div class="thread">
+      <!-- User message -->
+      <div class="msg user">
+        <div class="bubble-avatar">U</div>
+        <div class="bubble">
+          <div class="bubble-author">You</div>
+          <div class="bubble-text">splunk universalforwarder disabling</div>
+        </div>
+      </div>
+
+      <!-- AI message with generated test -->
+      <div class="msg ai">
+        <div class="bubble-avatar">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/></svg>
+        </div>
+        <div class="bubble">
+          <div class="bubble-author">AtomicTest</div>
+          <div class="bubble-text">Generated <strong>3 variants</strong> for <strong>Impair Defenses: Disable or Modify Tools</strong>. Different platforms need different commands (sc / systemctl / launchctl), so each is its own atomic_test.</div>
+
+          <div class="test-card">
+            <div class="test-head">
+              <span class="tid-pill">T1562.001</span>
+              <span class="test-name">Impair Defenses: Disable or Modify Tools</span>
+              <span class="variant-count">3 variants</span>
+            </div>
+
+            <div class="variants">
+              <button class="variant-pill active"><span class="platform-dot"></span> Windows</button>
+              <button class="variant-pill"><span class="platform-dot"></span> Linux</button>
+              <button class="variant-pill"><span class="platform-dot"></span> macOS</button>
+            </div>
+
+            <div class="yaml"><span class="yc"># Disable Splunk Universal Forwarder (Windows)</span>
+<span class="yk">attack_technique</span>: <span class="ys">T1562.001</span>
+<span class="yk">name</span>: <span class="ys">Disable Splunk Universal Forwarder (Windows)</span>
+<span class="yk">supported_platforms</span>:
+  - <span class="ys">windows</span>
+<span class="yk">executor</span>:
+  <span class="yk">name</span>: <span class="ys">command_prompt</span>
+  <span class="yk">command</span>: <span class="ys">|</span>
+    <span class="ys">sc stop </span><span class="ya">#{service_name}</span>
+    <span class="ys">sc config </span><span class="ya">#{service_name}</span><span class="ys"> start= disabled</span>
+  <span class="yk">cleanup_command</span>: <span class="ys">|</span>
+    <span class="ys">sc config </span><span class="ya">#{service_name}</span><span class="ys"> start= auto</span>
+  <span class="yk">elevation_required</span>: <span class="ys">true</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Composer -->
+    <div class="composer">
+      <div class="composer-bar">
+        <input type="text" placeholder="Refine, ask a follow-up, or describe a new test…" />
+        <button class="send" title="Send (⌘↵)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+      <div class="composer-meta">
+        <span>0 errors · ⌘↵ to send · Esc to close</span>
+        <button class="apply">Apply Windows variant →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

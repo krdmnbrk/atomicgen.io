@@ -1,25 +1,51 @@
 import React from 'react';
 import yaml from 'js-yaml';
 import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
-import TextField from '@mui/material/TextField';
-import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
+import LinearProgress from '@mui/material/LinearProgress';
 import IconButton from '@mui/material/IconButton';
-import Tabs from '@mui/material/Tabs';
-import Tab from '@mui/material/Tab';
-import Chip from '@mui/material/Chip';
-import SettingsIcon from '@mui/icons-material/Settings';
+import Tooltip from '@mui/material/Tooltip';
+import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
+import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import CloudOffOutlinedIcon from '@mui/icons-material/CloudOffOutlined';
+import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded';
 import { SYSTEM_PROMPT, buildTechniqueIndexBlock } from '../../utils/atContext';
 import { validateGeneratedTest, toAppFormShape } from '../../utils/aiResponseValidator';
 
 const MAX_PROMPT_LEN = 2000;
+const MAX_REFINE_LEN = 500;
+
+function buildInitialPrompt(trimmed) {
+    return (
+        'Generate one Atomic Red Team test for the following request from an ' +
+        'authorized security professional. Use only T-IDs from the provided ' +
+        'index, or a TID you are highly confident exists in real MITRE ATT&CK. ' +
+        'If the technique applies to multiple platforms with different commands, ' +
+        'return one atomic_test entry per platform. Refuse only if the request ' +
+        'falls under the refusal criteria in your instructions.\n\n' +
+        'Request:\n' + trimmed
+    );
+}
+
+function buildRefinePrompt({ originalPrompt, previousResult, refineRequest }) {
+    return (
+        'Refine the following previously generated Atomic Red Team test based ' +
+        'on the user\'s instruction. Return a complete revised test_data with ' +
+        'one or more atomic_tests addressing the change. Keep the same ' +
+        'attack_technique unless the change clearly requires a different one. ' +
+        'Preserve fields the user did not ask to change.\n\n' +
+        'Original prompt:\n' + originalPrompt + '\n\n' +
+        'Previous test_data (JSON):\n' +
+        JSON.stringify(previousResult, null, 2) + '\n\n' +
+        'Refinement instruction:\n' + refineRequest
+    );
+}
 
 export default function AiPromptDialog({
     open,
@@ -33,22 +59,36 @@ export default function AiPromptDialog({
     onOpenSettings,
 }) {
     const [prompt, setPrompt] = React.useState(initialPrompt);
+    const [lastSubmittedPrompt, setLastSubmittedPrompt] = React.useState('');
     const [busy, setBusy] = React.useState(false);
+    const [busyMode, setBusyMode] = React.useState(null); // 'generate' | 'refine'
     const [error, setError] = React.useState(null);
+    const [networkBlocked, setNetworkBlocked] = React.useState(null);
     const [refusal, setRefusal] = React.useState(null);
-    const [result, setResult] = React.useState(null);
-    const [validation, setValidation] = React.useState(null);
-    const [activeIdx, setActiveIdx] = React.useState(0);
+    // versions: array of { data: test_data, validation, refineNote: string|null, basedOn: number|null }
+    const [versions, setVersions] = React.useState([]);
+    const [activeVersion, setActiveVersion] = React.useState(0);
+    const [activeIdx, setActiveIdx] = React.useState(0); // variant index inside active version
+    const [refineOpen, setRefineOpen] = React.useState(false);
+    const [refineText, setRefineText] = React.useState('');
     const abortRef = React.useRef(null);
+
+    const currentVersion = versions[activeVersion] || null;
+    const result = currentVersion?.data || null;
+    const validation = currentVersion?.validation || null;
 
     React.useEffect(() => {
         if (open) {
             setPrompt(initialPrompt);
+            setLastSubmittedPrompt('');
             setError(null);
+            setNetworkBlocked(null);
             setRefusal(null);
-            setResult(null);
-            setValidation(null);
+            setVersions([]);
+            setActiveVersion(0);
             setActiveIdx(0);
+            setRefineOpen(false);
+            setRefineText('');
         }
     }, [open, initialPrompt]);
 
@@ -57,50 +97,30 @@ export default function AiPromptDialog({
         [techniques]
     );
 
-    const generate = async () => {
+    const callProvider = async ({ wrappedPrompt, mode, refineNote = null, basedOn = null }) => {
         setError(null);
+        setNetworkBlocked(null);
         setRefusal(null);
-        setResult(null);
-        setValidation(null);
-        setActiveIdx(0);
 
-        const trimmed = prompt.trim();
-        if (!trimmed) {
-            setError('Describe the test you want to generate.');
-            return;
-        }
-        if (trimmed.length > MAX_PROMPT_LEN) {
-            setError(`Prompt is too long (max ${MAX_PROMPT_LEN} characters).`);
-            return;
-        }
         if (!settings.apiKey) {
             setError(`Add your ${settings.provider.name} API key in settings first.`);
             return;
         }
 
         setBusy(true);
+        setBusyMode(mode);
         const ctrl = new AbortController();
         abortRef.current = ctrl;
-
         try {
             const indexBlock = buildTechniqueIndexBlock(techniques);
-            const wrappedUserPrompt =
-                'Generate one Atomic Red Team test for the following request from an ' +
-                'authorized security professional. Use only T-IDs from the provided ' +
-                'index, or a TID you are highly confident exists in real MITRE ATT&CK. ' +
-                'If the technique applies to multiple platforms with different commands, ' +
-                'return one atomic_test entry per platform. Refuse only if the request ' +
-                'falls under the refusal criteria in your instructions.\n\n' +
-                'Request:\n' + trimmed;
             const payload = await settings.provider.generate({
                 apiKey: settings.apiKey,
                 model: settings.model,
                 systemPrompt: SYSTEM_PROMPT,
                 indexBlock,
-                userPrompt: wrappedUserPrompt,
+                userPrompt: wrappedPrompt,
                 signal: ctrl.signal,
             });
-
             if (payload?.action === 'refuse') {
                 setRefusal(payload.reason || 'Request was declined.');
                 return;
@@ -110,15 +130,82 @@ export default function AiPromptDialog({
                 return;
             }
             const v = validateGeneratedTest(payload.test_data, knownTids);
-            setValidation(v);
-            setResult(payload.test_data);
+            const newVersion = {
+                data: payload.test_data,
+                validation: v,
+                refineNote,
+                basedOn,
+            };
+            if (mode === 'refine') {
+                setVersions((prev) => {
+                    const next = [...prev, newVersion];
+                    setActiveVersion(next.length - 1);
+                    return next;
+                });
+            } else {
+                setVersions([newVersion]);
+                setActiveVersion(0);
+            }
+            setActiveIdx(0);
+            return true;
         } catch (e) {
-            if (e.name !== 'AbortError') {
+            if (e.name === 'AbortError') {
+                /* user cancelled */
+            } else if (e?.code === 'NETWORK_BLOCKED') {
+                setNetworkBlocked({
+                    providerName: e.providerName || settings.provider.name,
+                    endpointHost: e.endpointHost || settings.provider.endpointHost,
+                });
+            } else {
                 setError(e.message || 'Generation failed.');
             }
         } finally {
             setBusy(false);
+            setBusyMode(null);
             abortRef.current = null;
+        }
+    };
+
+    const generate = async () => {
+        const trimmed = prompt.trim();
+        if (!trimmed) {
+            setError('Describe the test you want to generate.');
+            return;
+        }
+        if (trimmed.length > MAX_PROMPT_LEN) {
+            setError(`Prompt is too long (max ${MAX_PROMPT_LEN} characters).`);
+            return;
+        }
+        setLastSubmittedPrompt(trimmed);
+        setRefineOpen(false);
+        setRefineText('');
+        await callProvider({ wrappedPrompt: buildInitialPrompt(trimmed), mode: 'generate' });
+    };
+
+    const submitRefine = async () => {
+        const trimmed = refineText.trim();
+        if (!trimmed) {
+            setError('Describe what should change.');
+            return;
+        }
+        if (trimmed.length > MAX_REFINE_LEN) {
+            setError(`Refinement is too long (max ${MAX_REFINE_LEN} characters).`);
+            return;
+        }
+        if (!result) return;
+        const ok = await callProvider({
+            wrappedPrompt: buildRefinePrompt({
+                originalPrompt: lastSubmittedPrompt || prompt.trim(),
+                previousResult: result,
+                refineRequest: trimmed,
+            }),
+            mode: 'refine',
+            refineNote: trimmed,
+            basedOn: activeVersion,
+        });
+        if (ok) {
+            setRefineText('');
+            setRefineOpen(false);
         }
     };
 
@@ -131,6 +218,8 @@ export default function AiPromptDialog({
     const activeTestValidation = validation?.perTest?.[activeIdx];
     const topLevelErrors = validation?.errors || [];
     const topLevelWarnings = validation?.warnings || [];
+    const errorCount =
+        topLevelErrors.length + (activeTestValidation ? activeTestValidation.errors.length : 0);
 
     const apply = () => {
         if (!result) return;
@@ -183,186 +272,690 @@ export default function AiPromptDialog({
         (activeTestValidation ? activeTestValidation.errors.length === 0 : true);
 
     return (
-        <Dialog open={open} onClose={busy ? undefined : onClose} fullWidth maxWidth="md">
-            <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span>Generate atomic test with AI</span>
-                <IconButton onClick={onOpenSettings} aria-label="AI settings" size="small">
-                    <SettingsIcon fontSize="small" />
-                </IconButton>
-            </DialogTitle>
-            <DialogContent>
-                <Stack spacing={2} sx={{ mt: 1 }}>
-                    <Alert severity="info" variant="outlined">
-                        Provider: <strong>{settings.provider.name}</strong> · Model: <strong>{settings.model}</strong>
-                        {!settings.apiKey && ' · No API key set'}
-                    </Alert>
-                    <TextField
-                        label="Describe the atomic test"
-                        placeholder='e.g. "Create a Windows scheduled task that runs cmd.exe at logon."'
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        multiline
-                        minRows={3}
-                        maxRows={8}
-                        fullWidth
-                        autoFocus
+        <Dialog
+            open={open}
+            onClose={busy ? undefined : onClose}
+            fullWidth
+            maxWidth="md"
+            slotProps={{
+                paper: {
+                    sx: {
+                        borderRadius: 3,
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column',
+                    },
+                },
+            }}
+        >
+            {/* ─── Top command bar ─── */}
+            <Box
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    borderBottom: '1px solid var(--glass-stroke)',
+                }}
+            >
+                <Box sx={{ pl: 2, pr: 1.25, color: 'primary.main', display: 'flex', flexShrink: 0 }}>
+                    <AutoAwesomeRoundedIcon sx={{ fontSize: 20 }} />
+                </Box>
+                <Box
+                    component="input"
+                    type="text"
+                    autoFocus
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Describe a test to generate…"
+                    disabled={busy}
+                    maxLength={MAX_PROMPT_LEN}
+                    sx={{
+                        flex: 1,
+                        background: 'transparent',
+                        border: 'none',
+                        outline: 'none',
+                        color: 'text.primary',
+                        font: 'inherit',
+                        fontSize: 16,
+                        fontFamily: 'inherit',
+                        py: 2,
+                        '&::placeholder': { color: 'var(--text-faint)' },
+                        '&:disabled': { opacity: 0.6 },
+                    }}
+                />
+                <Tooltip title={`Provider: ${settings.provider.name} · click to change`} placement="bottom">
+                    <Box
+                        component="button"
+                        onClick={onOpenSettings}
+                        sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 0.6,
+                            mr: 1,
+                            px: 1,
+                            py: 0.4,
+                            background: 'transparent',
+                            border: '1px solid var(--glass-stroke)',
+                            borderRadius: 1.25,
+                            color: 'text.secondary',
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: 10.5,
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                            transition: 'all 0.12s',
+                            '&:hover': {
+                                color: 'primary.main',
+                                borderColor: 'rgba(255, 92, 57, 0.4)',
+                                background: 'var(--accent-soft)',
+                            },
+                        }}
+                    >
+                        <Box
+                            component="span"
+                            sx={{ width: 6, height: 6, borderRadius: '50%', background: settings.apiKey ? 'success.main' : 'var(--text-faint)', boxShadow: settings.apiKey ? '0 0 6px var(--mui-palette-success-main, #4DDD96)' : 'none', flexShrink: 0 }}
+                        />
+                        {settings.provider.id}/{settings.model}
+                    </Box>
+                </Tooltip>
+                <Typography
+                    sx={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 11,
+                        color: 'var(--text-faint)',
+                        pr: 1.5,
+                        flexShrink: 0,
+                    }}
+                >
+                    {prompt.length}/{MAX_PROMPT_LEN}
+                </Typography>
+                <Tooltip title="AI provider settings">
+                    <IconButton
+                        size="small"
+                        onClick={onOpenSettings}
+                        sx={{ mr: 0.5, color: 'text.secondary' }}
+                    >
+                        <TuneRoundedIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                </Tooltip>
+                <Tooltip title="Close">
+                    <IconButton
+                        size="small"
+                        onClick={busy ? undefined : onClose}
                         disabled={busy}
-                        inputProps={{ maxLength: MAX_PROMPT_LEN }}
-                        helperText={`${prompt.length}/${MAX_PROMPT_LEN}`}
-                    />
-                    {error && <Alert severity="error">{error}</Alert>}
-                    {refusal && (
-                        <Alert severity="info">
-                            The model declined to generate this test: {refusal}
-                        </Alert>
-                    )}
-                    {topLevelErrors.length > 0 && (
-                        <Alert severity="error">
-                            <Typography variant="subtitle2">Validation errors</Typography>
-                            <ul style={{ marginTop: 4, marginBottom: 0 }}>
-                                {topLevelErrors.map((m, i) => <li key={i}>{m}</li>)}
-                            </ul>
-                        </Alert>
-                    )}
-                    {topLevelWarnings.length > 0 && (
-                        <Alert severity="warning">
-                            <ul style={{ marginTop: 0, marginBottom: 0 }}>
-                                {topLevelWarnings.map((m, i) => <li key={i}>{m}</li>)}
-                            </ul>
-                        </Alert>
-                    )}
-                    {result && tests.length > 0 && (
-                        <Box>
-                            <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                                {result.attack_technique} — {result.display_name}
-                                {tests.length > 1 && ` · ${tests.length} variants`}
-                            </Typography>
-                            {tests.length > 1 && (
-                                <>
-                                    <Tabs
-                                        value={activeIdx}
-                                        onChange={(_, v) => setActiveIdx(v)}
-                                        variant="scrollable"
-                                        scrollButtons="auto"
-                                        sx={{ borderBottom: 1, borderColor: 'divider', mb: 1 }}
+                        sx={{ mr: 1, color: 'text.secondary' }}
+                    >
+                        <CloseRoundedIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                </Tooltip>
+            </Box>
+
+            {/* Indeterminate progress strip while a request is in flight */}
+            {busy && (
+                <LinearProgress
+                    sx={{
+                        height: 2,
+                        backgroundColor: 'transparent',
+                        '& .MuiLinearProgress-bar': {
+                            background: 'linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent))',
+                        },
+                    }}
+                />
+            )}
+
+            {/* ─── Status row (only when result exists) ─── */}
+            {result && (
+                <Box
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.5,
+                        px: 2,
+                        py: 1,
+                        borderBottom: '1px solid var(--glass-stroke)',
+                        background: 'rgba(0, 0, 0, 0.18)',
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 11,
+                        color: 'text.secondary',
+                        flexWrap: 'wrap',
+                    }}
+                >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0 }}>
+                        <Box sx={{ color: 'primary.main', fontWeight: 500 }}>{result.attack_technique}</Box>
+                        <Box sx={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--text-faint)' }} />
+                        <Box sx={{ color: 'text.primary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {result.display_name}
+                        </Box>
+                        {tests.length > 1 && (
+                            <>
+                                <Box sx={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--text-faint)' }} />
+                                <Box>{tests.length} variants</Box>
+                            </>
+                        )}
+                    </Box>
+                    <Box
+                        sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 0.75,
+                            color: errorCount > 0 ? 'error.main' : 'success.main',
+                        }}
+                    >
+                        <Box
+                            sx={{
+                                width: 6,
+                                height: 6,
+                                borderRadius: '50%',
+                                background: errorCount > 0 ? 'error.main' : 'success.main',
+                                boxShadow: `0 0 6px ${errorCount > 0 ? '#E5484D' : '#4DDD96'}`,
+                            }}
+                        />
+                        {errorCount > 0
+                            ? `${errorCount} error${errorCount === 1 ? '' : 's'}`
+                            : '0 errors'}
+                    </Box>
+                </Box>
+            )}
+
+            {/* ─── Versions row (only when 2+ versions exist) ─── */}
+            {versions.length >= 2 && (
+                <Box
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.25,
+                        px: 2,
+                        py: 1,
+                        borderBottom: '1px solid var(--glass-stroke)',
+                        background: 'rgba(0, 0, 0, 0.10)',
+                    }}
+                >
+                    <Typography
+                        sx={{
+                            fontSize: 10,
+                            fontWeight: 600,
+                            color: 'var(--text-faint)',
+                            letterSpacing: '0.10em',
+                            textTransform: 'uppercase',
+                            flexShrink: 0,
+                        }}
+                    >
+                        Versions
+                    </Typography>
+                    <Box
+                        sx={{
+                            display: 'inline-flex',
+                            background: 'rgba(0, 0, 0, 0.3)',
+                            border: '1px solid var(--glass-stroke)',
+                            borderRadius: 2,
+                            padding: 0.4,
+                            gap: 0.25,
+                            overflowX: 'auto',
+                            flex: 1,
+                            minWidth: 0,
+                        }}
+                    >
+                        {versions.map((v, i) => {
+                            const active = i === activeVersion;
+                            const tip = v.refineNote
+                                ? `v${i + 1} · refined from v${(v.basedOn ?? i - 1) + 1}: "${v.refineNote}"`
+                                : `v${i + 1} · initial generation`;
+                            return (
+                                <Tooltip key={i} title={tip} placement="top">
+                                    <Box
+                                        component="button"
+                                        onClick={() => {
+                                            setActiveVersion(i);
+                                            setActiveIdx(0);
+                                        }}
+                                        sx={{
+                                            background: active ? 'var(--accent-soft)' : 'transparent',
+                                            color: active ? 'primary.main' : 'text.secondary',
+                                            border: 'none',
+                                            boxShadow: active
+                                                ? `inset 0 0 0 1px rgba(255, 92, 57, 0.4)`
+                                                : 'none',
+                                            borderRadius: 1.25,
+                                            px: 1.25,
+                                            py: 0.5,
+                                            fontFamily: "'JetBrains Mono', monospace",
+                                            fontSize: 11.5,
+                                            fontWeight: active ? 600 : 500,
+                                            cursor: 'pointer',
+                                            transition: 'all 0.12s',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 0.5,
+                                            flexShrink: 0,
+                                            '&:hover': {
+                                                color: active ? 'primary.main' : 'text.primary',
+                                                background: active ? 'var(--accent-soft)' : 'rgba(255,255,255,0.04)',
+                                            },
+                                        }}
                                     >
-                                        {tests.map((t, i) => (
-                                            <Tab
-                                                key={i}
-                                                label={
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                                                        <Typography variant="body2">{t.name || `Variant ${i + 1}`}</Typography>
-                                                        {Array.isArray(t.supported_platforms) && t.supported_platforms.length > 0 && (
-                                                            <Chip
-                                                                size="small"
-                                                                label={t.supported_platforms.join(', ')}
-                                                                color="warning"
-                                                                variant="outlined"
-                                                                sx={{ height: 18, fontSize: 10 }}
-                                                            />
-                                                        )}
-                                                    </Box>
-                                                }
-                                            />
-                                        ))}
-                                    </Tabs>
-                                    <Alert severity="info" variant="outlined" sx={{ mb: 1 }}>
-                                        Multiple platform variants generated. The selected tab will be applied to the form.
-                                    </Alert>
-                                </>
-                            )}
-                            {activeTestValidation && activeTestValidation.errors.length > 0 && (
-                                <Alert severity="error" sx={{ mb: 1 }}>
-                                    <Typography variant="subtitle2">Errors in this variant</Typography>
-                                    <ul style={{ marginTop: 4, marginBottom: 0 }}>
-                                        {activeTestValidation.errors.map((m, i) => <li key={i}>{m}</li>)}
-                                    </ul>
-                                </Alert>
-                            )}
-                            {activeTestValidation && activeTestValidation.warnings.length > 0 && (
-                                <Alert severity="warning" sx={{ mb: 1 }}>
-                                    <ul style={{ marginTop: 0, marginBottom: 0 }}>
-                                        {activeTestValidation.warnings.map((m, i) => <li key={i}>{m}</li>)}
-                                    </ul>
-                                </Alert>
-                            )}
-                            <Box
-                                component="pre"
+                                        v{i + 1}
+                                        {v.refineNote && (
+                                            <AutoFixHighRoundedIcon sx={{ fontSize: 11, opacity: 0.7 }} />
+                                        )}
+                                    </Box>
+                                </Tooltip>
+                            );
+                        })}
+                    </Box>
+                    {currentVersion?.refineNote && (
+                        <Typography
+                            sx={{
+                                fontSize: 11,
+                                color: 'var(--text-faint)',
+                                fontStyle: 'italic',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                maxWidth: 320,
+                                flexShrink: 1,
+                            }}
+                            title={currentVersion.refineNote}
+                        >
+                            “{currentVersion.refineNote}”
+                        </Typography>
+                    )}
+                </Box>
+            )}
+
+            {/* ─── Variant segmented control + Refine button (multi-variant only) ─── */}
+            {result && (
+                <Box
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 1.5,
+                        px: 2,
+                        py: 1.25,
+                        borderBottom: '1px solid var(--glass-stroke)',
+                    }}
+                >
+                    {tests.length > 1 ? (
+                        <Box
+                            sx={{
+                                display: 'inline-flex',
+                                background: 'rgba(0, 0, 0, 0.3)',
+                                border: '1px solid var(--glass-stroke)',
+                                borderRadius: 2,
+                                padding: 0.5,
+                            }}
+                        >
+                            {tests.map((t, i) => {
+                                const platform = Array.isArray(t.supported_platforms) && t.supported_platforms[0]
+                                    ? t.supported_platforms[0]
+                                    : `var-${i + 1}`;
+                                const active = i === activeIdx;
+                                return (
+                                    <Box
+                                        key={i}
+                                        component="button"
+                                        onClick={() => setActiveIdx(i)}
+                                        sx={{
+                                            background: active ? 'var(--accent-soft)' : 'transparent',
+                                            color: active ? 'primary.main' : 'text.secondary',
+                                            border: 'none',
+                                            boxShadow: active
+                                                ? `inset 0 0 0 1px rgba(255, 92, 57, 0.4)`
+                                                : 'none',
+                                            borderRadius: 1.25,
+                                            px: 1.5,
+                                            py: 0.75,
+                                            fontFamily: "'JetBrains Mono', monospace",
+                                            fontSize: 12,
+                                            fontWeight: active ? 600 : 500,
+                                            cursor: 'pointer',
+                                            transition: 'all 0.12s',
+                                            '&:hover': {
+                                                color: active ? 'primary.main' : 'text.primary',
+                                            },
+                                        }}
+                                    >
+                                        {platform}
+                                    </Box>
+                                );
+                            })}
+                        </Box>
+                    ) : (
+                        <Box />
+                    )}
+                    <Button
+                        variant={refineOpen ? 'contained' : 'outlined'}
+                        size="small"
+                        startIcon={
+                            busy && busyMode === 'refine'
+                                ? <CircularProgress size={14} sx={{ color: 'inherit' }} />
+                                : <AutoFixHighRoundedIcon sx={{ fontSize: 16 }} />
+                        }
+                        onClick={() => setRefineOpen((v) => !v)}
+                        disabled={busy}
+                        sx={{
+                            textTransform: 'none',
+                            borderRadius: 1.5,
+                            fontWeight: 500,
+                            fontSize: 13,
+                        }}
+                    >
+                        {busy && busyMode === 'refine' ? 'Refining…' : 'Refine'}
+                    </Button>
+                </Box>
+            )}
+
+            {/* ─── Refine inline bar ─── */}
+            {result && refineOpen && (
+                <Box
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        px: 2,
+                        py: 1.25,
+                        borderBottom: '1px solid var(--glass-stroke)',
+                        background: 'var(--accent-soft)',
+                    }}
+                >
+                    <AutoFixHighRoundedIcon sx={{ fontSize: 18, color: 'primary.main', flexShrink: 0 }} />
+                    <Box
+                        component="input"
+                        type="text"
+                        autoFocus
+                        value={refineText}
+                        onChange={(e) => setRefineText(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && refineText.trim() && !busy) submitRefine();
+                            if (e.key === 'Escape') {
+                                setRefineOpen(false);
+                                setRefineText('');
+                            }
+                        }}
+                        placeholder='What should change? e.g. "use powershell instead", "make cleanup idempotent", "add a timeout argument"…'
+                        disabled={busy}
+                        maxLength={MAX_REFINE_LEN}
+                        sx={{
+                            flex: 1,
+                            background: 'transparent',
+                            border: 'none',
+                            outline: 'none',
+                            color: 'text.primary',
+                            font: 'inherit',
+                            fontSize: 14,
+                            fontFamily: 'inherit',
+                            py: 1,
+                            '&::placeholder': { color: 'var(--text-faint)' },
+                        }}
+                    />
+                    <Typography
+                        sx={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: 10,
+                            color: 'var(--text-faint)',
+                            flexShrink: 0,
+                        }}
+                    >
+                        {refineText.length}/{MAX_REFINE_LEN}
+                    </Typography>
+                    <Button
+                        size="small"
+                        onClick={() => {
+                            setRefineOpen(false);
+                            setRefineText('');
+                        }}
+                        disabled={busy}
+                        sx={{ textTransform: 'none', color: 'text.secondary', minWidth: 0, px: 1.25 }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        size="small"
+                        variant="contained"
+                        onClick={submitRefine}
+                        disabled={busy || !refineText.trim()}
+                        sx={{ textTransform: 'none', borderRadius: 1.5, fontWeight: 600, minWidth: 0, px: 1.75 }}
+                    >
+                        Refine →
+                    </Button>
+                </Box>
+            )}
+
+            {/* ─── Body (alerts, busy, YAML) ─── */}
+            <Box sx={{ flex: 1, overflow: 'auto', background: result ? 'rgba(0, 0, 0, 0.18)' : 'transparent' }}>
+                {/* Alerts */}
+                {(error || networkBlocked || refusal || (validation && (topLevelErrors.length > 0 || topLevelWarnings.length > 0)) || (busy && !result)) && (
+                    <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+                        {error && <Alert severity="error" sx={{ borderRadius: 2 }}>{error}</Alert>}
+                        {networkBlocked && (
+                            <Alert
+                                severity="warning"
+                                icon={<CloudOffOutlinedIcon />}
                                 sx={{
-                                    p: 0,
-                                    m: 0,
-                                    fontSize: 12,
-                                    fontFamily: 'monospace',
-                                    bgcolor: 'action.hover',
-                                    border: '1px solid',
-                                    borderColor: 'divider',
-                                    borderRadius: 1,
-                                    maxHeight: 320,
-                                    overflow: 'auto',
-                                    whiteSpace: 'pre',
+                                    borderRadius: 2,
+                                    alignItems: 'flex-start',
+                                    '& .MuiAlert-icon': { fontSize: 28, mt: 0.5 },
                                 }}
                             >
-                                {yamlBlocks ? (
-                                    <>
-                                        <Box component="span" sx={{ display: 'block', px: 2, pt: 2 }}>
-                                            {yamlBlocks.headerYaml}
-                                        </Box>
-                                        {yamlBlocks.testYamls.map((y, i) => (
-                                            <Box
-                                                key={i}
-                                                component="span"
-                                                sx={(theme) => {
-                                                    const active = i === activeIdx && yamlBlocks.testYamls.length > 1;
-                                                    const dim = i !== activeIdx && yamlBlocks.testYamls.length > 1;
-                                                    return {
-                                                        display: 'block',
-                                                        px: 2,
-                                                        py: 0.25,
-                                                        opacity: dim ? 0.42 : 1,
-                                                        backgroundColor: active
-                                                            ? (theme.palette.mode === 'dark'
-                                                                ? 'rgba(255, 167, 38, 0.14)'
-                                                                : 'rgba(255, 167, 38, 0.18)')
-                                                            : 'transparent',
-                                                        boxShadow: active
-                                                            ? `inset 3px 0 0 0 ${theme.palette.warning.main}`
-                                                            : 'none',
-                                                        transition: 'opacity 150ms, background-color 150ms',
-                                                    };
-                                                }}
-                                            >
-                                                {y}
-                                            </Box>
-                                        ))}
-                                        <Box component="span" sx={{ display: 'block', pb: 2 }} />
-                                    </>
-                                ) : (
-                                    <Box component="span" sx={{ display: 'block', p: 2 }}>{fallbackYaml}</Box>
-                                )}
+                                <AlertTitle sx={{ fontWeight: 600, mb: 0.5 }}>
+                                    Couldn't reach {networkBlocked.providerName}
+                                </AlertTitle>
+                                <Typography variant="body2" sx={{ mb: 1.25 }}>
+                                    The{' '}
+                                    <Box
+                                        component="code"
+                                        sx={{
+                                            background: 'var(--glass-strong)',
+                                            px: 0.6,
+                                            py: 0.1,
+                                            borderRadius: 0.5,
+                                            fontSize: 12,
+                                            fontFamily: "'JetBrains Mono', monospace",
+                                        }}
+                                    >
+                                        {networkBlocked.endpointHost}
+                                    </Box>{' '}
+                                    endpoint is unreachable from this network. This often happens when corporate firewalls or DNS policies block LLM provider domains.
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
+                                    You can still:
+                                </Typography>
+                                <Box component="ul" sx={{ m: 0, mb: 1.25, pl: 2.5, '& li': { fontSize: 13, lineHeight: 1.6 } }}>
+                                    <li>Browse and load any test from the atomic-red-team repo</li>
+                                    <li>Load a sample test and edit it manually</li>
+                                    <li>Upload an existing YAML file</li>
+                                </Box>
+                                <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary' }}>
+                                    To enable AI generation, try a network without LLM restrictions, or ask your IT team to allow{' '}
+                                    <Box
+                                        component="code"
+                                        sx={{
+                                            background: 'var(--glass-strong)',
+                                            px: 0.6,
+                                            py: 0.1,
+                                            borderRadius: 0.5,
+                                            fontSize: 11,
+                                            fontFamily: "'JetBrains Mono', monospace",
+                                        }}
+                                    >
+                                        {networkBlocked.endpointHost}
+                                    </Box>.
+                                </Typography>
+                            </Alert>
+                        )}
+                        {refusal && (
+                            <Alert severity="info" sx={{ borderRadius: 2 }}>
+                                The model declined to generate this test: {refusal}
+                            </Alert>
+                        )}
+                        {topLevelErrors.length > 0 && (
+                            <Alert severity="error" sx={{ borderRadius: 2 }}>
+                                <Typography variant="subtitle2">Validation errors</Typography>
+                                <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5 }}>
+                                    {topLevelErrors.map((m, i) => <li key={i}>{m}</li>)}
+                                </Box>
+                            </Alert>
+                        )}
+                        {topLevelWarnings.length > 0 && (
+                            <Alert severity="warning" sx={{ borderRadius: 2 }}>
+                                <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+                                    {topLevelWarnings.map((m, i) => <li key={i}>{m}</li>)}
+                                </Box>
+                            </Alert>
+                        )}
+                        {activeTestValidation && activeTestValidation.errors.length > 0 && (
+                            <Alert severity="error" sx={{ borderRadius: 2 }}>
+                                <Typography variant="subtitle2">Errors in this variant</Typography>
+                                <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5 }}>
+                                    {activeTestValidation.errors.map((m, i) => <li key={i}>{m}</li>)}
+                                </Box>
+                            </Alert>
+                        )}
+                        {activeTestValidation && activeTestValidation.warnings.length > 0 && (
+                            <Alert severity="warning" sx={{ borderRadius: 2 }}>
+                                <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+                                    {activeTestValidation.warnings.map((m, i) => <li key={i}>{m}</li>)}
+                                </Box>
+                            </Alert>
+                        )}
+                        {busy && !result && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
+                                <CircularProgress size={18} />
+                                <Typography variant="body2" color="text.secondary">
+                                    Generating…
+                                </Typography>
                             </Box>
-                        </Box>
-                    )}
-                    {busy && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <CircularProgress size={20} />
-                            <Typography variant="body2">Generating…</Typography>
-                        </Box>
-                    )}
-                </Stack>
-            </DialogContent>
-            <DialogActions>
-                {busy ? (
-                    <Button color="warning" onClick={cancel}>Cancel request</Button>
-                ) : (
-                    <Button onClick={onClose}>Close</Button>
+                        )}
+                    </Box>
                 )}
-                <Button variant="outlined" onClick={generate} disabled={busy}>
-                    Generate
+
+                {/* YAML preview */}
+                {result && (
+                    <Box
+                        component="pre"
+                        sx={{
+                            m: 0,
+                            p: 0,
+                            fontSize: 12.5,
+                            fontFamily: "'JetBrains Mono', monospace",
+                            lineHeight: 1.7,
+                            color: 'text.primary',
+                            whiteSpace: 'pre',
+                            position: 'relative',
+                            opacity: busy && busyMode === 'refine' ? 0.5 : 1,
+                            transition: 'opacity 0.2s',
+                        }}
+                    >
+                        {yamlBlocks ? (
+                            <>
+                                <Box component="span" sx={{ display: 'block', px: 2.5, pt: 2 }}>
+                                    {yamlBlocks.headerYaml}
+                                </Box>
+                                {yamlBlocks.testYamls.map((y, i) => {
+                                    const active = i === activeIdx && yamlBlocks.testYamls.length > 1;
+                                    const dim = i !== activeIdx && yamlBlocks.testYamls.length > 1;
+                                    return (
+                                        <Box
+                                            key={i}
+                                            component="span"
+                                            sx={(theme) => ({
+                                                display: 'block',
+                                                px: 2.5,
+                                                py: 0.25,
+                                                opacity: dim ? 0.42 : 1,
+                                                backgroundColor: active
+                                                    ? theme.palette.mode === 'dark'
+                                                        ? 'rgba(255, 167, 38, 0.14)'
+                                                        : 'rgba(255, 167, 38, 0.18)'
+                                                    : 'transparent',
+                                                boxShadow: active
+                                                    ? `inset 3px 0 0 0 ${theme.palette.warning.main}`
+                                                    : 'none',
+                                                transition: 'opacity 150ms, background-color 150ms',
+                                            })}
+                                        >
+                                            {y}
+                                        </Box>
+                                    );
+                                })}
+                                <Box component="span" sx={{ display: 'block', pb: 2 }} />
+                            </>
+                        ) : (
+                            <Box component="span" sx={{ display: 'block', p: 2.5 }}>
+                                {fallbackYaml}
+                            </Box>
+                        )}
+
+                        {busy && busyMode === 'refine' && (
+                            <Box
+                                sx={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 1.5,
+                                    color: 'primary.main',
+                                    fontSize: 14,
+                                    fontWeight: 500,
+                                    backdropFilter: 'blur(2px)',
+                                }}
+                            >
+                                <CircularProgress size={18} />
+                                Refining…
+                            </Box>
+                        )}
+                    </Box>
+                )}
+            </Box>
+
+            {/* ─── Footer actions ─── */}
+            <Box
+                sx={{
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    gap: 1,
+                    px: 2,
+                    py: 1.5,
+                    borderTop: '1px solid var(--glass-stroke)',
+                }}
+            >
+                {busy ? (
+                    <Button onClick={cancel} color="warning" sx={{ textTransform: 'none' }}>
+                        Cancel request
+                    </Button>
+                ) : (
+                    <Button onClick={onClose} sx={{ textTransform: 'none', color: 'text.secondary' }}>
+                        Close
+                    </Button>
+                )}
+                <Button
+                    variant={result ? 'outlined' : 'contained'}
+                    onClick={generate}
+                    disabled={busy || !prompt.trim()}
+                    sx={{ textTransform: 'none', borderRadius: 1.5, fontWeight: 500 }}
+                >
+                    {result ? 'Generate new' : busy ? 'Generating…' : 'Generate'}
                 </Button>
-                <Button variant="contained" onClick={apply} disabled={!canApply || busy}>
-                    {tests.length > 1 ? 'Apply selected to form' : 'Apply to form'}
-                </Button>
-            </DialogActions>
+                {result && (
+                    <Button
+                        variant="contained"
+                        onClick={apply}
+                        disabled={!canApply || busy}
+                        sx={{
+                            textTransform: 'none',
+                            borderRadius: 1.5,
+                            fontWeight: 600,
+                            background: 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+                            boxShadow: '0 4px 14px -4px var(--accent), inset 0 1px 0 rgba(255,255,255,0.3)',
+                            '&:hover': {
+                                background: 'linear-gradient(135deg, var(--accent-2), var(--accent))',
+                            },
+                        }}
+                    >
+                        {tests.length > 1 ? 'Apply selected' : 'Apply to form'}
+                    </Button>
+                )}
+            </Box>
         </Dialog>
     );
 }

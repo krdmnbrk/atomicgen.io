@@ -11,6 +11,7 @@ export const openaiProvider = {
     ],
     apiKeyHint: 'sk-...',
     apiKeyHelpUrl: 'https://platform.openai.com/api-keys',
+    endpointHost: 'api.openai.com',
 
     async generate({ apiKey, model, systemPrompt, indexBlock, userPrompt, signal }) {
         if (!apiKey) throw new Error('Missing OpenAI API key.');
@@ -38,15 +39,25 @@ export const openaiProvider = {
             tool_choice: { type: 'function', function: { name: TOOL_NAME } },
         };
 
-        const res = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify(body),
-            signal,
-        });
+        let res;
+        try {
+            res = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify(body),
+                signal,
+            });
+        } catch (e) {
+            if (e?.name === 'AbortError') throw e;
+            const err = new Error(`Could not reach ${this.name}. The API endpoint is unreachable.`);
+            err.code = 'NETWORK_BLOCKED';
+            err.providerName = this.name;
+            err.endpointHost = this.endpointHost;
+            throw err;
+        }
 
         if (!res.ok) {
             const text = await res.text().catch(() => '');
