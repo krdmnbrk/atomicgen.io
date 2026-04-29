@@ -26,7 +26,7 @@ const techniqueYamlUrl = (tid) => `${REPO_BASE}/${tid}/${tid}.yaml`;
 const MAX_SUGGESTIONS = 5;
 const DEBOUNCE_MS = 200;
 
-export default function AiAssistant({ base, setInputs, setChanged, changed, darkMode }) {
+export default function AiAssistant({ base, setInputs, setChanged, changed, darkMode, setLoadedSource }) {
     const [query, setQuery] = React.useState('');
     const [debouncedQuery, setDebouncedQuery] = React.useState('');
     const [loadingTest, setLoadingTest] = React.useState(false);
@@ -86,6 +86,7 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
             if (!test) throw new Error(`Could not locate test "${item.testName}" in ${item.tid}.`);
             const shape = mergeTechniqueAndTestIntoForm(parsed, test);
             if (shape) setInputs({ ...base, ...shape });
+            if (setLoadedSource) setLoadedSource({ type: 'repo', tid: item.tid });
             setChanged(false);
             setQuery('');
         } catch (e) {
@@ -98,10 +99,7 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
 
     const openAi = () => {
         setError(null);
-        if (!settings.apiKey) {
-            setSettingsOpen(true);
-            return;
-        }
+        // Always open AI dialog — it renders an inline key prompt when key is missing.
         setAiOpen(true);
     };
 
@@ -348,6 +346,7 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
                 techniques={data?.techniques || []}
                 settings={settings}
                 onOpenSettings={() => setSettingsOpen(true)}
+                setLoadedSource={setLoadedSource}
             />
             <AiSettingsDialog
                 open={settingsOpen}

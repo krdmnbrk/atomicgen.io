@@ -18,7 +18,7 @@ import {
     AccordionDetails,
     Tooltip,
     IconButton,
-    Link,
+    Autocomplete,
 } from '@mui/material';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -32,6 +32,7 @@ import Dependency from './Inputs/Dependency';
 import Editor from './Editor';
 import InputButtons from './Inputs/InputButtons';
 import AiAssistant from './Inputs/AiAssistant';
+import useAtomicIndex from '../hooks/useAtomicIndex';
 
 const ITEM_HEIGHT = 48;
 const ITEM_PADDING_TOP = 8;
@@ -115,6 +116,8 @@ function Inputs({
     setInputs,
     executor_names,
     supported_platforms,
+    loadedSource,
+    setLoadedSource,
 }) {
     const handleChangeText = (e) => {
         const { name, value } = e.target;
@@ -205,6 +208,25 @@ function Inputs({
             : `https://attack.mitre.org/techniques/${base}/`;
     })();
 
+    // ATT&CK technique autocomplete (loads from atomic-red-team CSV index)
+    const { data: atIndex } = useAtomicIndex();
+    const techniqueOptions = atIndex?.techniques || [];
+    const handleTechniqueChange = (_event, value) => {
+        if (typeof value === 'string') {
+            // Free-text — accept as TID, leave display name alone
+            setInputs((prev) => ({ ...prev, attack_technique: value || null }));
+        } else if (value && value.id) {
+            // Picked from list — set both TID and display name
+            setInputs((prev) => ({
+                ...prev,
+                attack_technique: value.id,
+                display_name: value.name || prev.display_name,
+            }));
+        } else {
+            setInputs((prev) => ({ ...prev, attack_technique: null }));
+        }
+    };
+
     const lifecycleHasContent =
         Boolean(inputs.executor?.cleanup_command) ||
         (Array.isArray(inputs.dependencies) && inputs.dependencies.length > 0);
@@ -231,6 +253,7 @@ function Inputs({
                     setChanged={setChanged}
                     changed={changed}
                     darkMode={darkMode}
+                    setLoadedSource={setLoadedSource}
                 />
             </Box>
 
@@ -241,43 +264,150 @@ function Inputs({
                 setChanged={setChanged}
                 changed={changed}
                 darkMode={darkMode}
+                setLoadedSource={setLoadedSource}
             />
+
+            {/* Source provenance badge */}
+            {loadedSource && (
+                <Box
+                    sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 0.75,
+                        mb: 1.5,
+                        px: 1.25,
+                        py: 0.5,
+                        borderRadius: 1.5,
+                        background: 'var(--accent-soft)',
+                        border: '1px solid rgba(255, 92, 57, 0.25)',
+                        fontSize: 11,
+                        color: 'primary.main',
+                        fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                >
+                    {loadedSource.type === 'repo' && (
+                        <>
+                            <Box component="span" sx={{ opacity: 0.7 }}>📦</Box>
+                            Loaded from atomic-red-team{loadedSource.tid ? ` · ${loadedSource.tid}` : ''}
+                        </>
+                    )}
+                    {loadedSource.type === 'sample' && (
+                        <>
+                            <Box component="span" sx={{ opacity: 0.7 }}>⚡</Box>
+                            Sample: {loadedSource.label}
+                        </>
+                    )}
+                    {loadedSource.type === 'ai' && (
+                        <>
+                            <Box component="span" sx={{ opacity: 0.7 }}>✦</Box>
+                            Generated with AI
+                        </>
+                    )}
+                    {loadedSource.type === 'upload' && (
+                        <>
+                            <Box component="span" sx={{ opacity: 0.7 }}>📁</Box>
+                            Uploaded: {loadedSource.filename || 'YAML file'}
+                        </>
+                    )}
+                    {loadedSource.type === 'draft' && (
+                        <>
+                            <Box component="span" sx={{ opacity: 0.7 }}>💾</Box>
+                            Restored from autosave
+                        </>
+                    )}
+                    {changed && (
+                        <Box component="span" sx={{ opacity: 0.6, fontStyle: 'italic', ml: 0.5 }}>
+                            · modified
+                        </Box>
+                    )}
+                </Box>
+            )}
 
             {/* ─── IDENTITY ─── */}
             <Paper elevation={0} sx={glassSection}>
                 <SectionTitle icon={<InfoOutlinedIcon sx={{ fontSize: 16 }} />}>Identity</SectionTitle>
                 <Box sx={{ display: 'flex', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>
-                    <TextField
-                        required
-                        spellCheck="false"
-                        label="ATT&CK technique"
-                        placeholder="T1053.005"
-                        id="attack_technique"
+                    <Autocomplete
+                        freeSolo
+                        autoSelect
                         size="small"
-                        name="attack_technique"
+                        options={techniqueOptions}
                         value={inputs.attack_technique || ''}
-                        onChange={handleChangeText}
-                        sx={{ ...inputSx, flex: '0 0 200px' }}
-                        InputProps={
-                            techniqueAttackUrl
-                                ? {
-                                      endAdornment: (
-                                          <Tooltip title="Open on attack.mitre.org">
-                                              <IconButton
-                                                  component="a"
-                                                  href={techniqueAttackUrl}
-                                                  target="_blank"
-                                                  rel="noopener"
-                                                  size="small"
-                                                  sx={{ color: 'primary.main' }}
-                                              >
-                                                  <OpenInNewRoundedIcon sx={{ fontSize: 16 }} />
-                                              </IconButton>
-                                          </Tooltip>
-                                      ),
-                                  }
-                                : undefined
-                        }
+                        onChange={handleTechniqueChange}
+                        getOptionLabel={(o) => (typeof o === 'string' ? o : o.id || '')}
+                        filterOptions={(opts, state) => {
+                            const q = state.inputValue.trim().toLowerCase();
+                            if (!q) return opts.slice(0, 50);
+                            const matches = opts.filter(
+                                (o) =>
+                                    o.id.toLowerCase().includes(q) ||
+                                    (o.name || '').toLowerCase().includes(q)
+                            );
+                            return matches.slice(0, 50);
+                        }}
+                        renderOption={(props, option) => {
+                            const { key, ...rest } = props;
+                            return (
+                                <li key={key} {...rest} style={{ ...rest.style, padding: '6px 10px' }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                                        <Box
+                                            sx={{
+                                                fontFamily: "'JetBrains Mono', monospace",
+                                                fontSize: 11,
+                                                color: 'primary.main',
+                                                minWidth: 80,
+                                                fontWeight: 500,
+                                            }}
+                                        >
+                                            {option.id}
+                                        </Box>
+                                        <Box
+                                            sx={{
+                                                fontSize: 13,
+                                                color: 'text.primary',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap',
+                                                flex: 1,
+                                            }}
+                                        >
+                                            {option.name}
+                                        </Box>
+                                    </Box>
+                                </li>
+                            );
+                        }}
+                        sx={{ ...inputSx, flex: '0 0 240px' }}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                required
+                                label="ATT&CK technique"
+                                placeholder="T1053.005 or 'scheduled task'"
+                                InputProps={{
+                                    ...params.InputProps,
+                                    endAdornment: (
+                                        <>
+                                            {techniqueAttackUrl && (
+                                                <Tooltip title="Open on attack.mitre.org">
+                                                    <IconButton
+                                                        component="a"
+                                                        href={techniqueAttackUrl}
+                                                        target="_blank"
+                                                        rel="noopener"
+                                                        size="small"
+                                                        sx={{ color: 'primary.main', mr: -0.5 }}
+                                                    >
+                                                        <OpenInNewRoundedIcon sx={{ fontSize: 16 }} />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
+                                            {params.InputProps.endAdornment}
+                                        </>
+                                    ),
+                                }}
+                            />
+                        )}
                     />
                     <TextField
                         required
@@ -321,6 +451,39 @@ function Inputs({
                         onChange={handleChangeText}
                         sx={inputSx}
                     />
+                    {/* Lint-style writing hints */}
+                    {(() => {
+                        const desc = (inputs.description || '').trim();
+                        if (!desc) return null;
+                        const hints = [];
+                        if (desc.length < 30) hints.push('Add more detail about adversary intent and the expected artifact.');
+                        if (!/\b(verify|verif|check|expected|upon execution|after execution)/i.test(desc)) {
+                            hints.push('Consider adding a verification cue (e.g., "Verify with: …", "Upon execution …").');
+                        }
+                        if (inputs.executor?.command && /#\{[^}]+\}/.test(inputs.executor.command) && !desc.includes('#{')) {
+                            // not a strong rule — skip
+                        }
+                        if (hints.length === 0) return null;
+                        return (
+                            <Box
+                                sx={{
+                                    mt: 0.75,
+                                    fontSize: 11,
+                                    color: 'var(--text-faint)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 0.25,
+                                }}
+                            >
+                                {hints.map((h, i) => (
+                                    <Box key={i} sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.75 }}>
+                                        <Box component="span" sx={{ color: 'warning.main' }}>ⓘ</Box>
+                                        <span>{h}</span>
+                                    </Box>
+                                ))}
+                            </Box>
+                        );
+                    })()}
                 </Box>
                 <Box>
                     <FormControl required size="small" fullWidth sx={inputSx}>

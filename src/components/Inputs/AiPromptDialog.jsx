@@ -16,6 +16,7 @@ import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import CloudOffOutlinedIcon from '@mui/icons-material/CloudOffOutlined';
 import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded';
+import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded';
 import { SYSTEM_PROMPT, buildTechniqueIndexBlock } from '../../utils/atContext';
 import { validateGeneratedTest, toAppFormShape } from '../../utils/aiResponseValidator';
 
@@ -110,17 +111,53 @@ function colorYamlLine(line, key) {
     return <React.Fragment key={key}>{colorYamlValue(line)}</React.Fragment>;
 }
 
-function ColorizedYaml({ text }) {
+function ColorizedYaml({ text, previousLineSet }) {
     if (!text) return null;
     const lines = text.split('\n');
+    if (!previousLineSet) {
+        return (
+            <>
+                {lines.map((line, i) => (
+                    <React.Fragment key={i}>
+                        {colorYamlLine(line, i)}
+                        {i < lines.length - 1 ? '\n' : ''}
+                    </React.Fragment>
+                ))}
+            </>
+        );
+    }
+    // Diff mode: wrap each line in a block with a left bar when changed
     return (
         <>
-            {lines.map((line, i) => (
-                <React.Fragment key={i}>
-                    {colorYamlLine(line, i)}
-                    {i < lines.length - 1 ? '\n' : ''}
-                </React.Fragment>
-            ))}
+            {lines.map((line, i) => {
+                const trimmed = line.trim();
+                const isChanged = trimmed && !previousLineSet.has(trimmed);
+                const isLast = i === lines.length - 1;
+                if (!trimmed) {
+                    // Empty line — render as-is
+                    return (
+                        <React.Fragment key={i}>
+                            {line}
+                            {!isLast && '\n'}
+                        </React.Fragment>
+                    );
+                }
+                return (
+                    <span
+                        key={i}
+                        style={{
+                            display: 'inline-block',
+                            width: '100%',
+                            boxShadow: isChanged ? 'inset 2px 0 0 0 #4DDD96' : 'none',
+                            backgroundColor: isChanged ? 'rgba(77, 221, 150, 0.06)' : 'transparent',
+                            paddingLeft: 2,
+                        }}
+                    >
+                        {colorYamlLine(line, i)}
+                        {!isLast && '\n'}
+                    </span>
+                );
+            })}
         </>
     );
 }
@@ -161,6 +198,7 @@ export default function AiPromptDialog({
     techniques,
     settings,
     onOpenSettings,
+    setLoadedSource,
 }) {
     const [prompt, setPrompt] = React.useState(initialPrompt);
     const [lastSubmittedPrompt, setLastSubmittedPrompt] = React.useState('');
@@ -335,6 +373,7 @@ export default function AiPromptDialog({
         }
         setInputs({ ...base, ...shape });
         setChanged(false);
+        if (setLoadedSource) setLoadedSource({ type: 'ai' });
         onClose();
     };
 
@@ -361,6 +400,33 @@ export default function AiPromptDialog({
             return null;
         }
     }, [result]);
+
+    // Build a Set of trimmed lines from the version this one was based on,
+    // so we can highlight what changed during refine.
+    const previousVersionLineSet = React.useMemo(() => {
+        if (!currentVersion || currentVersion.basedOn == null) return null;
+        const prev = versions[currentVersion.basedOn];
+        if (!prev?.data) return null;
+        try {
+            const headerYaml =
+                yaml.dump(
+                    { attack_technique: prev.data.attack_technique, display_name: prev.data.display_name },
+                    { lineWidth: -1, noRefs: true }
+                ) + 'atomic_tests:\n';
+            const testYamls = (prev.data.atomic_tests || []).map((t) => {
+                const dumped = yaml.dump([t], { lineWidth: -1, noRefs: true });
+                return dumped
+                    .split('\n')
+                    .map((line) => (line.length ? '  ' + line : line))
+                    .join('\n');
+            });
+            const all = [headerYaml, ...testYamls].join('\n');
+            const set = new Set(all.split('\n').map((l) => l.trim()).filter(Boolean));
+            return set;
+        } catch {
+            return null;
+        }
+    }, [currentVersion, versions]);
 
     const fallbackYaml = React.useMemo(() => {
         if (!result || yamlBlocks) return '';
@@ -714,6 +780,19 @@ export default function AiPromptDialog({
                     ) : (
                         <Box />
                     )}
+                    {tests.length > 1 && (
+                        <Typography
+                            sx={{
+                                fontSize: 11,
+                                color: 'var(--text-faint)',
+                                ml: 1,
+                                display: { xs: 'none', sm: 'inline' },
+                            }}
+                        >
+                            Cross-platform technique — pick your target.
+                        </Typography>
+                    )}
+                    <Box sx={{ flex: 1 }} />
                     <Button
                         variant={refineOpen ? 'contained' : 'outlined'}
                         size="small"
@@ -809,6 +888,77 @@ export default function AiPromptDialog({
                     >
                         Refine →
                     </Button>
+                </Box>
+            )}
+
+            {/* ─── Inline first-run API key prompt ─── */}
+            {!settings.apiKey && (
+                <Box sx={{ p: 2, borderBottom: '1px solid var(--glass-stroke)', background: 'var(--accent-soft)' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                        <Box
+                            sx={{
+                                width: 28,
+                                height: 28,
+                                borderRadius: '50%',
+                                background: 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+                                color: 'white',
+                                display: 'grid',
+                                placeItems: 'center',
+                                flexShrink: 0,
+                                fontSize: 14,
+                            }}
+                        >
+                            🔒
+                        </Box>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 0.5 }}>
+                                Add your {settings.provider.name} API key to start generating
+                            </Typography>
+                            <Typography sx={{ fontSize: 12, color: 'text.secondary', mb: 1.25 }}>
+                                Your key stays in this browser (localStorage) and goes directly to {settings.provider.endpointHost}. No backend, no logging. <Box component="a" href={settings.provider.apiKeyHelpUrl} target="_blank" rel="noopener" sx={{ color: 'primary.main' }}>Get a key →</Box>
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                                <Box
+                                    component="input"
+                                    type="password"
+                                    placeholder={settings.provider.apiKeyHint}
+                                    autoComplete="off"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && e.target.value.trim()) {
+                                            settings.setApiKey(e.target.value.trim());
+                                        }
+                                    }}
+                                    onBlur={(e) => {
+                                        const v = e.target.value.trim();
+                                        if (v) settings.setApiKey(v);
+                                    }}
+                                    sx={{
+                                        flex: '1 1 240px',
+                                        minWidth: 200,
+                                        background: 'var(--glass-modal)',
+                                        border: '1px solid var(--glass-stroke-strong)',
+                                        borderRadius: 1.5,
+                                        color: 'text.primary',
+                                        font: 'inherit',
+                                        fontSize: 13,
+                                        fontFamily: "'JetBrains Mono', monospace",
+                                        px: 1.5,
+                                        py: 1,
+                                        outline: 'none',
+                                        '&:focus': { borderColor: 'primary.main' },
+                                    }}
+                                />
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={onOpenSettings}
+                                    sx={{ textTransform: 'none', borderRadius: 1.5 }}
+                                >
+                                    More options
+                                </Button>
+                            </Box>
+                        </Box>
+                    </Box>
                 </Box>
             )}
 
@@ -940,7 +1090,7 @@ export default function AiPromptDialog({
                         {yamlBlocks ? (
                             <>
                                 <Box component="span" sx={{ display: 'block', px: 2.5, pt: 2 }}>
-                                    <ColorizedYaml text={yamlBlocks.headerYaml} />
+                                    <ColorizedYaml text={yamlBlocks.headerYaml} previousLineSet={previousVersionLineSet} />
                                 </Box>
                                 {yamlBlocks.testYamls.map((y, i) => {
                                     const active = i === activeIdx && yamlBlocks.testYamls.length > 1;
@@ -965,7 +1115,7 @@ export default function AiPromptDialog({
                                                 transition: 'opacity 150ms, background-color 150ms',
                                             })}
                                         >
-                                            <ColorizedYaml text={y} />
+                                            <ColorizedYaml text={y} previousLineSet={previousVersionLineSet} />
                                         </Box>
                                     );
                                 })}
@@ -973,7 +1123,7 @@ export default function AiPromptDialog({
                             </>
                         ) : (
                             <Box component="span" sx={{ display: 'block', p: 2.5 }}>
-                                <ColorizedYaml text={fallbackYaml} />
+                                <ColorizedYaml text={fallbackYaml} previousLineSet={previousVersionLineSet} />
                             </Box>
                         )}
 
@@ -1013,6 +1163,31 @@ export default function AiPromptDialog({
                     borderTop: '1px solid var(--glass-stroke)',
                 }}
             >
+                {/* Reset/regenerate as a small de-emphasized icon — destructive (clears versions) */}
+                {result && !busy && (
+                    <Tooltip title="Discard versions and start a new generation from this prompt">
+                        <IconButton
+                            size="small"
+                            onClick={() => {
+                                if (versions.length > 1) {
+                                    const ok = window.confirm(
+                                        `Discard all ${versions.length} versions and start a new generation?`
+                                    );
+                                    if (!ok) return;
+                                }
+                                generate();
+                            }}
+                            sx={{
+                                color: 'text.secondary',
+                                border: '1px solid var(--glass-stroke)',
+                                borderRadius: 1.5,
+                                '&:hover': { color: 'warning.main', borderColor: 'warning.main' },
+                            }}
+                        >
+                            <ReplayRoundedIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                    </Tooltip>
+                )}
                 {busy ? (
                     <Button onClick={cancel} color="warning" sx={{ textTransform: 'none' }}>
                         Cancel request
@@ -1022,14 +1197,16 @@ export default function AiPromptDialog({
                         Close
                     </Button>
                 )}
-                <Button
-                    variant={result ? 'outlined' : 'contained'}
-                    onClick={generate}
-                    disabled={busy || !prompt.trim()}
-                    sx={{ textTransform: 'none', borderRadius: 1.5, fontWeight: 500 }}
-                >
-                    {result ? 'Generate new' : busy ? 'Generating…' : 'Generate'}
-                </Button>
+                {!result && (
+                    <Button
+                        variant="contained"
+                        onClick={generate}
+                        disabled={busy || !prompt.trim()}
+                        sx={{ textTransform: 'none', borderRadius: 1.5, fontWeight: 500 }}
+                    >
+                        {busy ? 'Generating…' : 'Generate'}
+                    </Button>
+                )}
                 {result && (
                     <Button
                         variant="contained"

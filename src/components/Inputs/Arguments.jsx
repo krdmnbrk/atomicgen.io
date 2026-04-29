@@ -1,76 +1,78 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import IconButton from '@mui/material/IconButton';
-import DeleteIcon from '@mui/icons-material/Delete';
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
-import { InputLabel } from '@mui/material';
-import FormControl from '@mui/material/FormControl';
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
-import Typography from '@mui/material/Typography';
+import Tooltip from '@mui/material/Tooltip';
 
-// Arguments component for managing input arguments
+const ARG_TYPES = ['string', 'url', 'path', 'integer', 'float'];
+
+// Type-aware default suggestions
+const DEFAULT_BY_TYPE = {
+    string: '',
+    url: 'https://example.com',
+    path: '~/',
+    integer: '0',
+    float: '0.0',
+};
+
 function Arguments({ darkMode, errors, setErrors, inputs, setInputs }) {
-    // Check if there are duplicate names among the input arguments
+    const lastAddedRef = useRef(null);
+
     function hasDuplicateNames(data) {
-        const names = data.map(obj => obj.name.trim());
+        const names = data.map((obj) => (obj.name || '').trim());
         return new Set(names).size !== names.length;
     }
-
-    // Check if there are empty names among the input arguments
     function hasEmptyNames(data) {
-        const names = data.map(obj => obj.name.trim());
-        return names.includes("");
+        const names = data.map((obj) => (obj.name || '').trim());
+        return names.includes('');
     }
 
-    // Use effect to validate input arguments and update errors
     useEffect(() => {
         let newErrors = [];
-
-        // Check for duplicate names
         if (hasDuplicateNames(inputs.input_arguments)) {
             newErrors.push('Argument names must be unique.');
-        } else {
-            newErrors = newErrors.filter((error) => error !== 'Argument names must be unique.');
         }
-
-        // Check for empty names
         if (hasEmptyNames(inputs.input_arguments)) {
             newErrors.push('Argument names cannot be empty.');
-        } else {
-            newErrors = newErrors.filter((error) => error !== 'Argument names cannot be empty.');
         }
-
         setErrors(newErrors);
     }, [inputs.input_arguments, setErrors]);
 
-    // Handle changes to a specific input argument field
     const handleInputArgumentChange = (index, field, value) => {
         setInputs((prev) => {
-            const updatedDependencies = [...prev.input_arguments];
-            updatedDependencies[index] = {
-                ...updatedDependencies[index],
-                [field]: value,
-            };
-            return { ...prev, input_arguments: updatedDependencies };
+            const next = [...prev.input_arguments];
+            next[index] = { ...next[index], [field]: value };
+            return { ...prev, input_arguments: next };
         });
     };
 
-    // Add a new input argument with default values
     const addInputArgument = () => {
         setInputs((prev) => ({
             ...prev,
             input_arguments: [
-                { description: '', default: `value_${inputs.input_arguments.length + 1}`, type: '', name: `input_${inputs.input_arguments.length + 1}` },
                 ...prev.input_arguments,
+                {
+                    name: '',
+                    type: 'string',
+                    default: DEFAULT_BY_TYPE.string,
+                    description: '',
+                },
             ],
         }));
+        // Focus the new row's name field after render
+        setTimeout(() => {
+            if (lastAddedRef.current) {
+                lastAddedRef.current.focus();
+            }
+        }, 0);
     };
 
-    // Remove an input argument by index
     const removeInputArgument = (index) => {
         setInputs((prev) => ({
             ...prev,
@@ -78,125 +80,173 @@ function Arguments({ darkMode, errors, setErrors, inputs, setInputs }) {
         }));
     };
 
+    const args = inputs.input_arguments || [];
+
     return (
         <Box>
-            {/* Button to Add Input Arguments */}
-            <Box>
-                <Button
+            {/* Compact table-style header */}
+            {args.length > 0 && (
+                <Box
                     sx={{
-                        mb: 1,
-                        textTransform: 'none',
-                        borderRadius: 1.5,
-                        borderColor: 'var(--glass-stroke-strong)',
-                        '&:hover': { borderColor: 'primary.main', background: 'var(--accent-soft)' },
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 110px 1fr 1.5fr 32px',
+                        gap: 1,
+                        px: 1,
+                        pb: 0.5,
+                        fontSize: 10,
+                        fontWeight: 600,
+                        color: 'var(--text-faint)',
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
                     }}
-                    startIcon={<AddCircleOutlineIcon />}
-                    variant="outlined"
-                    color="primary"
-                    onClick={addInputArgument}
                 >
-                    Add input argument {inputs.input_arguments.length > 0 ? `(${inputs.input_arguments.length})` : ''}
-                </Button>
-            </Box>
+                    <Box>Name</Box>
+                    <Box>Type</Box>
+                    <Box>Default</Box>
+                    <Box>Description</Box>
+                    <Box />
+                </Box>
+            )}
 
-            {/* Display Validation Errors */}
-            {errors.length > 0 &&
-                <Alert sx={{ mb: 1 }} variant={darkMode ? "outlined" : "filled"}  severity="error">
-                    {errors.map((error, index) => (
-                        <li key={index}>
-                            {error}
-                        </li>
-                    ))}
-                </Alert>
-            }
-
-            {/* Render Each Input Argument */}
-            {inputs.input_arguments.map((arg, index) => (
+            {/* Compact rows */}
+            {args.map((arg, index) => (
                 <Box
                     key={`input-argument-${index}`}
                     sx={{
-                        mb: 1.5,
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 110px 1fr 1.5fr 32px',
+                        gap: 1,
+                        alignItems: 'center',
+                        mb: 0.75,
+                        py: 0.5,
                         background: 'var(--glass-inset)',
                         border: '1px solid var(--glass-stroke)',
-                        borderRadius: 2,
-                        p: 1.75,
+                        borderRadius: 1.5,
+                        px: 1,
                     }}
                 >
-                    {/* Argument Name */}
                     <TextField
+                        size="small"
+                        variant="standard"
                         spellCheck="false"
-                        fullWidth
-                        size='small'
-                        label="Argument Name"
+                        placeholder="argument_name"
                         value={arg.name || ''}
-                        onChange={(e) =>
-                            handleInputArgumentChange(index, 'name', e.target.value)
-                        }
-                        placeholder="Enter argument name"
-                        sx={{ mb: 2 }}
+                        onChange={(e) => handleInputArgumentChange(index, 'name', e.target.value)}
+                        inputRef={index === args.length - 1 ? lastAddedRef : undefined}
+                        sx={{
+                            '& .MuiInput-input': {
+                                fontFamily: "'JetBrains Mono', monospace",
+                                fontSize: 12,
+                                color: 'primary.main',
+                                py: 0.5,
+                            },
+                            '& .MuiInput-underline:before': { borderBottom: 'none' },
+                            '& .MuiInput-underline:hover:not(.Mui-disabled):before': {
+                                borderBottom: '1px solid var(--glass-stroke-strong)',
+                            },
+                        }}
                     />
-
-                    {/* Argument Description */}
+                    <Select
+                        size="small"
+                        variant="standard"
+                        value={arg.type || 'string'}
+                        onChange={(e) => {
+                            const newType = e.target.value;
+                            handleInputArgumentChange(index, 'type', newType);
+                            // If default is empty/placeholder, replace with type-aware default
+                            if (
+                                !arg.default ||
+                                Object.values(DEFAULT_BY_TYPE).includes(arg.default)
+                            ) {
+                                handleInputArgumentChange(index, 'default', DEFAULT_BY_TYPE[newType] ?? '');
+                            }
+                        }}
+                        disableUnderline
+                        sx={{
+                            '& .MuiSelect-select': {
+                                fontSize: 11,
+                                fontFamily: "'JetBrains Mono', monospace",
+                                color: 'text.secondary',
+                                py: 0.5,
+                                pr: 2,
+                            },
+                        }}
+                    >
+                        {ARG_TYPES.map((type) => (
+                            <MenuItem key={type} value={type} sx={{ fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}>
+                                {type}
+                            </MenuItem>
+                        ))}
+                    </Select>
                     <TextField
+                        size="small"
+                        variant="standard"
                         spellCheck="false"
-                        fullWidth
-                        size='small'
-                        label="Argument Description"
+                        placeholder={DEFAULT_BY_TYPE[arg.type] ?? ''}
+                        value={arg.default ?? ''}
+                        onChange={(e) => handleInputArgumentChange(index, 'default', e.target.value)}
+                        sx={{
+                            '& .MuiInput-input': {
+                                fontFamily: "'JetBrains Mono', monospace",
+                                fontSize: 11.5,
+                                py: 0.5,
+                            },
+                            '& .MuiInput-underline:before': { borderBottom: 'none' },
+                        }}
+                    />
+                    <TextField
+                        size="small"
+                        variant="standard"
+                        spellCheck="false"
+                        placeholder="What this argument does"
                         value={arg.description || ''}
-                        onChange={(e) =>
-                            handleInputArgumentChange(index, 'description', e.target.value)
-                        }
-                        sx={{ mb: 2 }}
+                        onChange={(e) => handleInputArgumentChange(index, 'description', e.target.value)}
+                        sx={{
+                            '& .MuiInput-input': { fontSize: 12, py: 0.5 },
+                            '& .MuiInput-underline:before': { borderBottom: 'none' },
+                        }}
                     />
-
-                    {/* Default Value */}
-                    <TextField
-                        spellCheck="false"
-                        fullWidth
-                        size='small'
-                        label="Default Value"
-                        value={arg.default || ''}
-                        onChange={(e) =>
-                            handleInputArgumentChange(index, 'default', e.target.value)
-                        }
-                        sx={{ mb: 2 }}
-                    />
-
-                    {/* Input Type Dropdown and Delete Button */}
-                    <Box sx={{ display: "flex", justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                        {/* Input Type Selector */}
-                        <FormControl sx={{ mr: 1, mb: 1, width: '50%' }} size="small">
-                            <InputLabel id={`input-type-${index}`} style={{ fontSize: 14 }}>Input Type</InputLabel>
-                            <Select
-                                labelId={`input-type-${index}`}
-                                id={`input-type-select-${index}`}
-                                label="Input Type"
-                                value={arg.type}
-                                onChange={(e) =>
-                                    handleInputArgumentChange(index, 'type', e.target.value)
-                                }
-                            >
-                                {['string', 'url', 'path', 'integer', 'float'].map((type) => (
-                                    <MenuItem key={type} value={type}>
-                                        {type}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-
-                        {/* Delete Input Argument */}
+                    <Tooltip title="Remove argument">
                         <IconButton
-                            aria-label="delete"
-                            size="large"
-                            color="primary"
-                            variant={darkMode ? "outlined" : "contained"} 
+                            size="small"
                             onClick={() => removeInputArgument(index)}
+                            sx={{ color: 'var(--text-faint)', '&:hover': { color: 'error.main' } }}
+                            aria-label={`Remove argument ${arg.name || index + 1}`}
                         >
-                            <DeleteIcon fontSize="inherit" />
+                            <DeleteOutlineRoundedIcon sx={{ fontSize: 16 }} />
                         </IconButton>
-                    </Box>
+                    </Tooltip>
                 </Box>
             ))}
+
+            {errors.length > 0 && (
+                <Alert sx={{ mb: 1 }} variant={darkMode ? 'outlined' : 'filled'} severity="error">
+                    {errors.map((error, index) => (
+                        <li key={index}>{error}</li>
+                    ))}
+                </Alert>
+            )}
+
+            {/* Add row at the BOTTOM */}
+            <Button
+                sx={{
+                    mt: args.length > 0 ? 0.5 : 0,
+                    textTransform: 'none',
+                    borderRadius: 1.5,
+                    borderColor: 'var(--glass-stroke-strong)',
+                    width: '100%',
+                    justifyContent: 'flex-start',
+                    px: 1.5,
+                    '&:hover': { borderColor: 'primary.main', background: 'var(--accent-soft)' },
+                }}
+                startIcon={<AddCircleOutlineIcon />}
+                variant="outlined"
+                color="primary"
+                size="small"
+                onClick={addInputArgument}
+            >
+                Add input argument {args.length > 0 ? `(${args.length})` : ''}
+            </Button>
         </Box>
     );
 }

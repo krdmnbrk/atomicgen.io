@@ -22,6 +22,7 @@ export default function RepoLoaderButton({
     base,
     darkMode,
     setInputs,
+    setLoadedSource,
 }) {
     const [open, setOpen] = React.useState(false);
     const [loadingYaml, setLoadingYaml] = React.useState(false);
@@ -137,6 +138,8 @@ export default function RepoLoaderButton({
                     setOpen={setSelectionOpen}
                     fileContent={fileContent}
                     setInputs={setInputsAndReset}
+                    setLoadedSource={setLoadedSource}
+                    sourceType="repo"
                 />
             )}
         </>

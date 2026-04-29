@@ -18,12 +18,13 @@ const VisuallyHiddenInput = styled('input')({
 });
 
 
-export default function UploadButton({ inputButtonErrors, setInputButtonErrors, setChanged, changed, base, darkMode, setInputs }) {
+export default function UploadButton({ inputButtonErrors, setInputButtonErrors, setChanged, changed, base, darkMode, setInputs, setLoadedSource }) {
     const [open, setOpen] = React.useState(false);
     const [atomicNames, setAtomicNames] = React.useState([]);
     const [techniqueName, setTechniqueName] = React.useState(null);
     const [techniqueId, setTechniqueId] = React.useState(null);
     const [fileContent, setFileContent] = React.useState(null);
+    const [filename, setFilename] = React.useState(null);
 
     const handleFileUpload = async (event) => {
         setInputButtonErrors([]);
@@ -44,6 +45,7 @@ export default function UploadButton({ inputButtonErrors, setInputButtonErrors, 
 
                 const parsed = yaml.load(content);
                 setFileContent(parsed);
+                setFilename(file.name);
                 if (parsed.atomic_tests && typeof parsed.atomic_tests === 'object') {
                     setAtomicNames(parsed.atomic_tests.map(i => i.name))
                     setTechniqueName(parsed.display_name);
@@ -54,6 +56,7 @@ export default function UploadButton({ inputButtonErrors, setInputButtonErrors, 
                     const test = Array.isArray(parsed) ? parsed[0] : parsed;
                     const shape = mergeTechniqueAndTestIntoForm({}, test);
                     if (shape) setInputs({ ...base, ...shape });
+                    if (setLoadedSource) setLoadedSource({ type: 'upload', filename: file.name });
                 }
 
             } catch (error) {
@@ -89,6 +92,9 @@ export default function UploadButton({ inputButtonErrors, setInputButtonErrors, 
                     setOpen={setOpen}
                     fileContent={fileContent}
                     setInputs={setInputs}
+                    setLoadedSource={setLoadedSource}
+                    sourceType="upload"
+                    sourceFilename={filename}
                 />
             }
         </Button>

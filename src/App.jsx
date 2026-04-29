@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Inputs from './components/Inputs';
 import YamlContent from './components/YamlContent';
 import Navbar from './components/Navbar';
@@ -7,6 +7,9 @@ import CssBaseline from '@mui/material/CssBaseline';
 import GlobalStyles from '@mui/material/GlobalStyles';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
+import Button from '@mui/material/Button';
 
 const executor_names = [
   "powershell",
@@ -123,6 +126,9 @@ const validateInputs = (data, rules) => {
 };
 
 
+const DRAFT_KEY = 'atomicgen.form.draft';
+const DRAFT_DEBOUNCE_MS = 800;
+
 function App() {
   const [errors, setErrors] = useState([]);
   const [inputButtonErrors, setInputButtonErrors] = useState([]);
@@ -132,6 +138,78 @@ function App() {
   const [darkMode, setDarkMode] = useState(true);
   const [isPortrait, setIsPortrait] = useState(window.innerHeight > window.innerWidth);
   const [changed, setChanged] = useState(false);
+  // Source provenance — set by RepoLoader / UploadButton / AiAssistant when they hydrate the form
+  const [loadedSource, setLoadedSource] = useState(null);
+  // Draft restore prompt (shown on initial load if a saved draft exists)
+  const [draftRestoreOpen, setDraftRestoreOpen] = useState(false);
+  const [savedDraft, setSavedDraft] = useState(null);
+  // Reset undo (10s window)
+  const [undoSnack, setUndoSnack] = useState({ open: false, snapshot: null });
+  const undoTimerRef = useRef(null);
+
+  // On mount: try to restore draft from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && JSON.stringify(parsed) !== JSON.stringify(base)) {
+          setSavedDraft(parsed);
+          setDraftRestoreOpen(true);
+        }
+      }
+    } catch { /* ignore corrupt drafts */ }
+  }, []);
+
+  // Debounced autosave of `inputs` to localStorage
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try {
+        if (JSON.stringify(inputs) === JSON.stringify(base)) {
+          localStorage.removeItem(DRAFT_KEY);
+        } else {
+          localStorage.setItem(DRAFT_KEY, JSON.stringify(inputs));
+        }
+      } catch { /* ignore quota errors */ }
+    }, DRAFT_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [inputs]);
+
+  const restoreDraft = () => {
+    if (savedDraft) {
+      setInputs(savedDraft);
+    }
+    setDraftRestoreOpen(false);
+    setSavedDraft(null);
+    setLoadedSource({ type: 'draft' });
+  };
+
+  const dismissDraft = () => {
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+    setDraftRestoreOpen(false);
+    setSavedDraft(null);
+  };
+
+  // Reset with undo
+  const resetWithUndo = () => {
+    const snapshot = { inputs, source: loadedSource };
+    setInputs(base);
+    setChanged(false);
+    setLoadedSource(null);
+    setUndoSnack({ open: true, snapshot });
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    undoTimerRef.current = setTimeout(() => {
+      setUndoSnack({ open: false, snapshot: null });
+    }, 10000);
+  };
+  const undoReset = () => {
+    if (undoSnack.snapshot) {
+      setInputs(undoSnack.snapshot.inputs);
+      setLoadedSource(undoSnack.snapshot.source);
+    }
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setUndoSnack({ open: false, snapshot: null });
+  };
 
   // Prevent page reload
   useEffect(() => {
@@ -435,6 +513,8 @@ function App() {
               setErrors={setErrors}
               inputButtonErrors={inputButtonErrors}
               setInputButtonErrors={setInputButtonErrors}
+              loadedSource={loadedSource}
+              setLoadedSource={setLoadedSource}
             />
           </Grid>
           <Grid size={isPortrait ? 12 : 6}>
@@ -449,10 +529,57 @@ function App() {
               validationErrors={validationErrors}
               setChanged={setChanged}
               changed={changed}
+              onReset={resetWithUndo}
             />
           </Grid>
         </Grid>
       </Box>
+
+      {/* Restore draft prompt */}
+      <Snackbar
+        open={draftRestoreOpen}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        onClose={() => {}}
+      >
+        <Alert
+          severity="info"
+          variant="outlined"
+          sx={{ borderRadius: 2, alignItems: 'center', backdropFilter: 'blur(20px)', background: 'var(--glass-modal)' }}
+          action={
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button color="inherit" size="small" onClick={dismissDraft}>
+                Discard
+              </Button>
+              <Button color="primary" size="small" variant="contained" onClick={restoreDraft}>
+                Restore
+              </Button>
+            </Box>
+          }
+        >
+          Found an unsaved draft from your last session.
+        </Alert>
+      </Snackbar>
+
+      {/* Reset undo */}
+      <Snackbar
+        open={undoSnack.open}
+        autoHideDuration={10000}
+        onClose={() => setUndoSnack({ open: false, snapshot: null })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity="success"
+          variant="outlined"
+          sx={{ borderRadius: 2, backdropFilter: 'blur(20px)', background: 'var(--glass-modal)' }}
+          action={
+            <Button color="primary" size="small" onClick={undoReset}>
+              Undo
+            </Button>
+          }
+        >
+          Form reset.
+        </Alert>
+      </Snackbar>
     </ThemeProvider>
   );
 }

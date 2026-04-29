@@ -29,7 +29,7 @@ const SAMPLE_TECHNIQUE_META = [
 
 
 
-export default function InputButtons({ inputButtonErrors, setInputButtonErrors, base, darkMode, setInputs, setChanged, changed }) {
+export default function InputButtons({ inputButtonErrors, setInputButtonErrors, base, darkMode, setInputs, setChanged, changed, setLoadedSource }) {
     const [open, setOpen] = React.useState(false);
     const [samples, setSamples] = useState([]);
     const anchorRef = React.useRef(null);
@@ -75,6 +75,10 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
         }
         await setInputs({ ...base, ...samples[level] });
         setChanged(false);
+        if (setLoadedSource) {
+            const labels = ['Basic — Hostname Discovery', 'Moderate — Scheduled Task Startup', 'Complex — Push file using scp'];
+            setLoadedSource({ type: 'sample', label: labels[level] || `Sample ${level + 1}` });
+        }
         handleToggle(null);
     }
 
@@ -103,6 +107,7 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
                     inputButtonErrors={inputButtonErrors}
                     setChanged={setChanged}
                     changed={changed}
+                    setLoadedSource={setLoadedSource}
                 />
                 <RepoLoaderButton
                     base={base}
@@ -112,6 +117,7 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
                     inputButtonErrors={inputButtonErrors}
                     setChanged={setChanged}
                     changed={changed}
+                    setLoadedSource={setLoadedSource}
                 />
             </ButtonGroup>
             {inputButtonErrors.length > 0 &&

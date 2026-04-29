@@ -123,15 +123,43 @@ function dumpAtomicYaml(wrapper) {
   });
 }
 
-function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErrors, setChanged, changed }) {
+function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErrors, setChanged, changed, onReset }) {
   const [formatted_yaml, setFormattedYaml] = React.useState(null);
   const [showContent, setShowContent] = React.useState(false);
   const [showValidationErrors, setShowValidationErrors] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
 
+  // Map validation error message → form input id, used by jump-to-field
+  const ERROR_TO_FIELD_ID = {
+    'MITRE ATT&CK technique (T####)': 'attack_technique',
+    'Technique display name': 'display_name',
+    'Test name': 'name',
+    'Test description': 'description',
+    'Supported platforms': 'supported-platforms',
+    'Attack command': 'attack-command-editor',
+    'Attack executor name': 'attack_executor_select',
+  };
+
+  const jumpToFirstError = () => {
+    if (!validationErrors.length) return;
+    const first = validationErrors[0];
+    const id = ERROR_TO_FIELD_ID[first];
+    if (id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Focus if input
+        if (typeof el.focus === 'function' && el.tagName === 'INPUT') {
+          setTimeout(() => el.focus(), 400);
+        }
+      }
+    }
+  };
+
   const showValidationErrorHandler = () => {
     if (validationErrors.length > 0) {
       setShowValidationErrors(true);
+      jumpToFirstError();
     }
   };
 
@@ -159,11 +187,13 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
   }, [updated, formatted_yaml]);
 
   const resetButtonHandle = () => {
-    const confirmReset = window.confirm('Are you sure you want to reset?');
-    if (confirmReset) {
-      setInputs(base);
-      setChanged(false);
+    if (typeof onReset === 'function') {
+      onReset();
+      return;
     }
+    // Fallback (no parent handler) — silent reset, no confirm
+    setInputs(base);
+    setChanged(false);
   };
 
   const downloadButtonHandle = () => {
