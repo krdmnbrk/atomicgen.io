@@ -63,7 +63,8 @@ export default function RepoLoaderButton({
         if (error) setInputButtonErrors(['Failed to load technique index from atomic-red-team repository.']);
     }, [error, setInputButtonErrors]);
 
-    // Group tests by tactic → technique → count.
+    // Group tests by tactic → technique → count. Also keep per-technique
+    // test-name list so search can match atomic-test names, not just TIDs.
     const tacticGroups = React.useMemo(() => {
         if (!data?.tests) return [];
         const byTactic = new Map();
@@ -77,11 +78,13 @@ export default function RepoLoaderButton({
                     name: t.techName || t.tid,
                     testCount: 0,
                     executors: new Set(),
+                    testNames: [],
                 });
             }
             const tech = techs.get(t.tid);
             tech.testCount += 1;
             if (t.exec) tech.executors.add(t.exec);
+            if (t.testName) tech.testNames.push(t.testName);
         }
 
         const tacticIds = [
@@ -108,6 +111,7 @@ export default function RepoLoaderButton({
     }, [tacticGroups, activeTactic]);
 
     // Visible techniques: filter overrides tactic when present.
+    // Filter matches against TID, technique name, and any atomic-test name.
     const visibleTechniques = React.useMemo(() => {
         if (!tacticGroups.length) return [];
         const q = filter.trim().toLowerCase();
@@ -117,12 +121,20 @@ export default function RepoLoaderButton({
             for (const group of tacticGroups) {
                 for (const tech of group.techniques) {
                     if (seen.has(tech.id)) continue;
-                    if (
-                        tech.id.toLowerCase().includes(q) ||
-                        tech.name.toLowerCase().includes(q)
-                    ) {
+                    const tidHit = tech.id.toLowerCase().includes(q);
+                    const nameHit = tech.name.toLowerCase().includes(q);
+                    const testHits = (tech.testNames || []).filter((tn) =>
+                        tn && tn.toLowerCase().includes(q)
+                    );
+                    if (tidHit || nameHit || testHits.length) {
                         seen.add(tech.id);
-                        out.push({ ...tech, tactic: group.id, tacticLabel: group.label, tacticColor: group.color });
+                        out.push({
+                            ...tech,
+                            tactic: group.id,
+                            tacticLabel: group.label,
+                            tacticColor: group.color,
+                            testHits: tidHit || nameHit ? [] : testHits.slice(0, 2),
+                        });
                     }
                 }
             }
@@ -135,6 +147,7 @@ export default function RepoLoaderButton({
             tactic: group.id,
             tacticLabel: group.label,
             tacticColor: group.color,
+            testHits: [],
         }));
     }, [tacticGroups, activeTactic, filter]);
 
@@ -514,6 +527,38 @@ export default function RepoLoaderButton({
                                                 )}
                                                 {Array.from(tech.executors || []).slice(0, 2).join(' · ') || '—'}
                                             </Typography>
+                                            {tech.testHits && tech.testHits.length > 0 && (
+                                                <Typography
+                                                    sx={{
+                                                        fontSize: 11,
+                                                        color: 'primary.light',
+                                                        mt: 0.5,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 0.5,
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap',
+                                                    }}
+                                                    title={tech.testHits.join(' · ')}
+                                                >
+                                                    <Box
+                                                        component="span"
+                                                        sx={{
+                                                            fontFamily: "'JetBrains Mono', monospace",
+                                                            fontSize: 9,
+                                                            color: 'var(--text-faint)',
+                                                            textTransform: 'uppercase',
+                                                            letterSpacing: '0.06em',
+                                                        }}
+                                                    >
+                                                        match:
+                                                    </Box>
+                                                    <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        {tech.testHits.join(' · ')}
+                                                    </Box>
+                                                </Typography>
+                                            )}
                                         </Box>
                                         <Box
                                             sx={{
@@ -550,6 +595,10 @@ export default function RepoLoaderButton({
                     setInputs={setInputsAndReset}
                     setLoadedSource={setLoadedSource}
                     sourceType="repo"
+                    onBack={() => {
+                        setSelectionOpen(false);
+                        setOpen(true);
+                    }}
                 />
             )}
         </>
