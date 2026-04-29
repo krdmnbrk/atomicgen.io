@@ -119,6 +119,15 @@ function Inputs({
     loadedSource,
     setLoadedSource,
 }) {
+    // AI prompt search query — lifted here so it can count as "dirty" for
+    // overwrite confirmations and be cleared when a test is loaded.
+    const [aiQuery, setAiQuery] = React.useState('');
+    const dirty = changed || aiQuery.trim().length > 0;
+    const setInputsAndClearQuery = React.useCallback((next) => {
+        setInputs(next);
+        setAiQuery('');
+    }, [setInputs]);
+
     const handleChangeText = (e) => {
         const { name, value } = e.target;
         setInputs((prev) => ({
@@ -249,9 +258,9 @@ function Inputs({
                     inputButtonErrors={inputButtonErrors}
                     setInputButtonErrors={setInputButtonErrors}
                     base={base}
-                    setInputs={setInputs}
+                    setInputs={setInputsAndClearQuery}
                     setChanged={setChanged}
-                    changed={changed}
+                    changed={dirty}
                     darkMode={darkMode}
                     setLoadedSource={setLoadedSource}
                 />
@@ -260,11 +269,13 @@ function Inputs({
             {/* AI prompt hero */}
             <AiAssistant
                 base={base}
-                setInputs={setInputs}
+                setInputs={setInputsAndClearQuery}
                 setChanged={setChanged}
-                changed={changed}
+                changed={dirty}
                 darkMode={darkMode}
                 setLoadedSource={setLoadedSource}
+                query={aiQuery}
+                setQuery={setAiQuery}
             />
 
             {/* Source provenance badge */}

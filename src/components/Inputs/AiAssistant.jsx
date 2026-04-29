@@ -27,8 +27,10 @@ const techniqueYamlUrl = (tid) => `${REPO_BASE}/${tid}/${tid}.yaml`;
 const MAX_SUGGESTIONS = 5;
 const DEBOUNCE_MS = 200;
 
-export default function AiAssistant({ base, setInputs, setChanged, changed, darkMode, setLoadedSource }) {
-    const [query, setQuery] = React.useState('');
+export default function AiAssistant({ base, setInputs, setChanged, changed, darkMode, setLoadedSource, query: queryProp, setQuery: setQueryProp }) {
+    const [internalQuery, setInternalQuery] = React.useState('');
+    const query = queryProp !== undefined ? queryProp : internalQuery;
+    const setQuery = setQueryProp || setInternalQuery;
     const [debouncedQuery, setDebouncedQuery] = React.useState('');
     const [loadingTest, setLoadingTest] = React.useState(false);
     const [error, setError] = React.useState(null);
