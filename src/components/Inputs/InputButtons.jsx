@@ -18,7 +18,14 @@ import complex from './samples/windows_push_file_using_scp.exe.yaml';
 import { Typography } from '@mui/material';
 import UploadButton from './UploadButton';
 import RepoLoaderButton from './RepoLoaderButton';
-import transformInputArguments from './transformInputArguments';
+import { mergeTechniqueAndTestIntoForm } from '../../utils/aiResponseValidator';
+
+// Best-known ATT&CK mappings for the bundled sample tests.
+const SAMPLE_TECHNIQUE_META = [
+    { attack_technique: 'T1082', display_name: 'System Information Discovery' },
+    { attack_technique: 'T1547.001', display_name: 'Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder' },
+    { attack_technique: 'T1105', display_name: 'Ingress Tool Transfer' },
+];
 
 
 
@@ -29,12 +36,17 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
 
     useEffect(() => {
         const fetchSamples = async () => {
-            const tests = []
-            for (let test of [basic, moderate, complex]) {
-                let response = await fetch(test);
+            const tests = [];
+            const sources = [basic, moderate, complex];
+            for (let i = 0; i < sources.length; i++) {
+                let response = await fetch(sources[i]);
                 let yamlText = await response.text();
                 let parsed = yaml.load(yamlText);
-                tests.push({ ...base, ...transformInputArguments(parsed[0]) });
+                // Samples are bare arrays — wrap with the best-known technique meta.
+                const test = Array.isArray(parsed) ? parsed[0] : parsed;
+                const wrapper = SAMPLE_TECHNIQUE_META[i] || {};
+                const shape = mergeTechniqueAndTestIntoForm(wrapper, test);
+                tests.push({ ...base, ...shape });
             }
             setSamples(tests);
         }

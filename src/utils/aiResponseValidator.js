@@ -163,6 +163,12 @@ export function toAppFormShape(payload, testIndex = 0) {
         ? Object.entries(t.input_arguments).map(([name, v]) => ({ name, ...(v || {}) }))
         : [];
     return {
+        // Technique-level fields lifted from the wrapper so the form mirrors
+        // a complete AT YAML round-trip.
+        attack_technique: payload?.attack_technique ?? null,
+        display_name: payload?.display_name ?? null,
+        auto_generated_guid: t.auto_generated_guid ?? null,
+        // Per-test fields
         name: t.name ?? null,
         description: t.description ?? null,
         supported_platforms: Array.isArray(t.supported_platforms) ? t.supported_platforms : [],
@@ -172,8 +178,37 @@ export function toAppFormShape(payload, testIndex = 0) {
         executor: {
             command: t.executor?.command ?? null,
             cleanup_command: t.executor?.cleanup_command ?? null,
+            steps: t.executor?.steps ?? null,
             name: t.executor?.name ?? '',
             elevation_required: Boolean(t.executor?.elevation_required),
+        },
+    };
+}
+
+// Map a parsed atomic-red-team technique YAML (`{attack_technique, display_name,
+// atomic_tests:[…]}`) + a single chosen test into the flat form shape.
+// Used by the repo loader, upload, and sample paths.
+export function mergeTechniqueAndTestIntoForm(parsedWrapper, test) {
+    if (!test) return null;
+    const inputArgsArray = test.input_arguments && typeof test.input_arguments === 'object'
+        ? Object.entries(test.input_arguments).map(([name, v]) => ({ name, ...(v || {}) }))
+        : [];
+    return {
+        attack_technique: parsedWrapper?.attack_technique ?? null,
+        display_name: parsedWrapper?.display_name ?? null,
+        auto_generated_guid: test.auto_generated_guid ?? null,
+        name: test.name ?? null,
+        description: test.description ?? null,
+        supported_platforms: Array.isArray(test.supported_platforms) ? test.supported_platforms : [],
+        input_arguments: inputArgsArray,
+        dependency_executor_name: test.dependency_executor_name ?? '',
+        dependencies: Array.isArray(test.dependencies) ? test.dependencies : [],
+        executor: {
+            command: test.executor?.command ?? null,
+            cleanup_command: test.executor?.cleanup_command ?? null,
+            steps: test.executor?.steps ?? null,
+            name: test.executor?.name ?? '',
+            elevation_required: Boolean(test.executor?.elevation_required),
         },
     };
 }

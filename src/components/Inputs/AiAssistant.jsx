@@ -17,7 +17,7 @@ import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import useAtomicIndex from '../../hooks/useAtomicIndex';
 import useLlmSettings from '../../hooks/useLlmSettings';
-import transformInputArguments from './transformInputArguments';
+import { mergeTechniqueAndTestIntoForm } from '../../utils/aiResponseValidator';
 import AiPromptDialog from './AiPromptDialog';
 import AiSettingsDialog from './AiSettingsDialog';
 
@@ -84,7 +84,8 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
                 if (Number.isFinite(idx) && idx >= 0 && idx < tests.length) test = tests[idx];
             }
             if (!test) throw new Error(`Could not locate test "${item.testName}" in ${item.tid}.`);
-            setInputs({ ...base, ...transformInputArguments(test) });
+            const shape = mergeTechniqueAndTestIntoForm(parsed, test);
+            if (shape) setInputs({ ...base, ...shape });
             setChanged(false);
             setQuery('');
         } catch (e) {

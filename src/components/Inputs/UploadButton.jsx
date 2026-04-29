@@ -3,7 +3,7 @@ import { styled } from '@mui/material/styles';
 import Button from '@mui/material/Button';
 import yaml from 'js-yaml';
 import UploadedAtomicSelection from './UploadedAtomicSelection';
-import transformInputArguments from './transformInputArguments';
+import { mergeTechniqueAndTestIntoForm } from '../../utils/aiResponseValidator';
 
 const VisuallyHiddenInput = styled('input')({
     clip: 'rect(0 0 0 0)',
@@ -50,7 +50,10 @@ export default function UploadButton({ inputButtonErrors, setInputButtonErrors, 
                     setTechniqueId(parsed.attack_technique);
                     setOpen(true);
                 } else {
-                    setInputs({ ...base, ...transformInputArguments(parsed[0]) });
+                    // Bare-array YAML (legacy single-test format) — no wrapper
+                    const test = Array.isArray(parsed) ? parsed[0] : parsed;
+                    const shape = mergeTechniqueAndTestIntoForm({}, test);
+                    if (shape) setInputs({ ...base, ...shape });
                 }
 
             } catch (error) {
