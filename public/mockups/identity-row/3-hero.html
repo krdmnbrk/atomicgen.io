@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Identity row — 03 Hero</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .hero {
+    position: relative;
+    background: linear-gradient(180deg, rgba(255,92,57,0.06), rgba(255,92,57,0.0));
+    border: 1px solid var(--glass-stroke);
+    border-radius: 14px;
+    padding: 18px 18px 14px;
+    margin-bottom: 14px;
+  }
+  .hero.is-focused {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-ring);
+  }
+  .hero .crown {
+    font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase;
+    font-weight: 600; color: var(--accent-2); margin-bottom: 8px;
+  }
+  .hero input {
+    width: 100%; background: transparent; border: 0; outline: 0;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px; font-weight: 600;
+    letter-spacing: -0.01em;
+    padding: 4px 0;
+  }
+  .hero input::placeholder { color: var(--text-faint); }
+  .hero .req { color: var(--error); }
+  .hero .selected-meta {
+    margin-top: 8px; display: flex; align-items: center; gap: 10px;
+    font-size: 12.5px; color: var(--text-muted);
+  }
+  .hero .dropdown { margin-top: 12px; }
+  .secondary {
+    margin-top: 10px;
+  }
+  .secondary .f-field {
+    background: rgba(15,18,24,0.45);
+    border-style: dashed;
+  }
+</style>
+</head><body>
+<main class="page">
+  <div class="nav">
+    <a href="index.html">← Designs</a>
+    <a href="1-stack.html">01 Stack</a>
+    <a href="2-flex-split.html">02 Flex Split</a>
+    <a class="active" href="3-hero.html">03 Hero</a>
+    <a href="4-picker-tile.html">04 Picker Tile</a>
+    <a href="5-cards-2line.html">05 2-line Cards</a>
+  </div>
+  <header class="page-head">
+    <div class="eyebrow">Design 03 / Hero technique</div>
+    <h1>ATT&CK kahraman, display name yardımcı</h1>
+    <p>Bu form'un asıl kimliği ATT&CK technique. Onu hero alanı yap — büyük mono font, üstte küçük "ATT&CK technique *" başlığı. Display name otomatik öneri olarak ikincil bir alanda. Hiyerarşi net.</p>
+  </header>
+
+  <div class="glass-card">
+    <div class="section-title">Identity</div>
+
+    <div class="hero is-focused">
+      <div class="crown">ATT&CK technique <span class="req">*</span></div>
+      <input value="T1059" />
+      <div class="selected-meta">
+        <span class="tag tag-execution">Execution</span>
+        <span>Command and Scripting Interpreter</span>
+      </div>
+      <div class="dropdown">
+        <div class="dropdown-row is-active">
+          <span class="id">T1059</span>
+          <span class="name">Command and Scripting Interpreter</span>
+          <span class="tag tag-execution">Execution</span>
+        </div>
+        <div class="dropdown-row">
+          <span class="id">T1059.001</span>
+          <span class="name">PowerShell</span>
+          <span class="tag tag-execution">Execution</span>
+        </div>
+        <div class="dropdown-row">
+          <span class="id">T1059.003</span>
+          <span class="name">Windows Command Shell</span>
+          <span class="tag tag-execution">Execution</span>
+        </div>
+        <div class="dropdown-row">
+          <span class="id">T1059.004</span>
+          <span class="name">Unix Shell</span>
+          <span class="tag tag-execution">Execution</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="secondary">
+      <div class="f-field">
+        <span class="label">Display name (auto-suggested) <span class="req">*</span></span>
+        <input value="Command and Scripting Interpreter" />
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Hissiyat:</strong> Form bir "ATT&CK kimliği seç" deneyimine dönüşüyor. Mono'da büyük T-numarası ve altında tactic chip — kullanıcı önce neyle uğraştığını net görüyor. Display name dashed-border ile "ikincil, düzenlenebilir öneri" gibi duruyor. Mobile'da hero zaten tam genişlik, sorun yok.
+  </div>
+</main>
+</body></html>

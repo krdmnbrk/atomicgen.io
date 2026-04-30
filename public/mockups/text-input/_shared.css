@@ -1,0 +1,104 @@
+:root {
+  --bg: #07080B;
+  --bg-2: #0C0E14;
+  --text: #F0F2F5;
+  --text-muted: #9AA3AE;
+  --text-faint: #5E6772;
+  --accent: #FF5C39;
+  --accent-2: #FF8A66;
+  --accent-soft: rgba(255, 92, 57, 0.15);
+  --accent-ring: rgba(255, 92, 57, 0.35);
+  --glass: rgba(20, 24, 32, 0.55);
+  --glass-strong: rgba(20, 24, 32, 0.78);
+  --glass-stroke: rgba(255, 255, 255, 0.10);
+  --glass-stroke-strong: rgba(255, 255, 255, 0.16);
+  --error: #F45C7B;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(255, 92, 57, 0.08), transparent 60%),
+    radial-gradient(1000px 500px at -10% 110%, rgba(120, 80, 200, 0.10), transparent 60%),
+    var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+a { color: var(--accent-2); }
+
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 56px 28px 96px;
+}
+.page-head {
+  margin-bottom: 32px;
+}
+.page-head .eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--accent);
+  font-weight: 600;
+}
+.page-head h1 {
+  font-size: 28px;
+  font-weight: 600;
+  margin: 6px 0 8px;
+  letter-spacing: -0.01em;
+}
+.page-head p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.nav {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin-bottom: 28px;
+}
+.nav a {
+  text-decoration: none;
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-stroke);
+  background: var(--glass);
+  color: var(--text-muted);
+}
+.nav a.active {
+  background: var(--accent-soft);
+  border-color: var(--accent-ring);
+  color: var(--accent-2);
+}
+.section {
+  display: flex; flex-direction: column; gap: 18px;
+  margin-top: 12px;
+}
+.section + .section-title {
+  margin-top: 28px;
+}
+.section-title {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+.note {
+  margin-top: 32px;
+  padding: 14px 16px;
+  border: 1px dashed var(--glass-stroke);
+  border-radius: 12px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+  background: rgba(255,255,255,0.02);
+}
+.note strong { color: var(--text); }
+.req { color: var(--error); margin-left: 4px; }

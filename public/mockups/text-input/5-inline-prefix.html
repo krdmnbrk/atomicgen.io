@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Text input — 05 Inline key</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css" />
+<style>
+  .key-field {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    background: rgba(15, 18, 24, 0.55);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color .15s, background .15s, box-shadow .15s;
+  }
+  .key-field:hover { border-color: var(--glass-stroke-strong); }
+  .key-field:focus-within {
+    border-color: var(--accent);
+    background: rgba(15, 18, 24, 0.8);
+    box-shadow: 0 0 0 3px var(--accent-ring);
+  }
+  .key-field .key {
+    padding: 12px 14px;
+    background: rgba(255,255,255,0.025);
+    border-right: 1px solid var(--glass-stroke);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex; align-items: flex-start; gap: 4px;
+    line-height: 1.5;
+  }
+  .key-field:focus-within .key { color: var(--accent-2); }
+  .key-field .key .req { color: var(--error); }
+  .key-field .val {
+    padding: 12px 14px;
+    display: flex; flex-direction: column;
+  }
+  .key-field input,
+  .key-field textarea {
+    width: 100%;
+    background: transparent;
+    border: 0;
+    outline: 0;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 0;
+    line-height: 1.55;
+  }
+  .key-field textarea { min-height: 96px; resize: vertical; }
+  .key-field input::placeholder,
+  .key-field textarea::placeholder { color: var(--text-faint); }
+  .helper { font-size: 11.5px; color: var(--text-faint); margin-top: 6px; }
+  @media (max-width: 600px) {
+    .key-field { grid-template-columns: 1fr; }
+    .key-field .key { border-right: 0; border-bottom: 1px solid var(--glass-stroke); }
+  }
+</style>
+</head>
+<body>
+  <main class="page">
+    <div class="nav">
+      <a href="index.html">← Designs</a>
+      <a href="1-stacked.html">01 Stacked</a>
+      <a href="2-floating-inside.html">02 Inside-Float</a>
+      <a href="3-chip-label.html">03 Chip</a>
+      <a href="4-underline-heading.html">04 Underline</a>
+      <a class="active" href="5-inline-prefix.html">05 Inline Key</a>
+    </div>
+
+    <header class="page-head">
+      <div class="eyebrow">Design 05 / Inline key-value</div>
+      <h1>YAML'a benziyor: <span class="mono" style="color:var(--accent-2)">key:</span> value</h1>
+      <p>Label kutunun içinde solda, dikey ayraç ve mono fontla bir "anahtar" gibi duruyor. atomic-red-team YAML çıktısını üreten bir araca yakışan, dosya merkezli his.</p>
+    </header>
+
+    <div class="section-title">Identity</div>
+    <div class="section">
+      <div class="key-field">
+        <div class="key">attack_technique<span class="req">*</span></div>
+        <div class="val"><input class="mono" type="text" value="T1059.001" /></div>
+      </div>
+      <div class="key-field">
+        <div class="key">display_name</div>
+        <div class="val"><input type="text" value="PowerShell" /></div>
+      </div>
+    </div>
+
+    <div class="section-title">Atomic test</div>
+    <div class="section">
+      <div class="key-field">
+        <div class="key">name<span class="req">*</span></div>
+        <div class="val"><input type="text" placeholder="Short, action-oriented title" /></div>
+      </div>
+      <div class="key-field">
+        <div class="key">description<span class="req">*</span></div>
+        <div class="val">
+          <textarea placeholder="What does this test do? What artifact is left behind? How can a defender verify it ran?"></textarea>
+          <div class="helper">Markdown desteklenir.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>Hissiyat:</strong> Label "yazılım" — YAML'daki anahtarın aynısı. Üretilen dosyayla form arasında doğrudan bir tipografik bağ kuruyor; teknik kullanıcı için tanıdık. Mobile'da otomatik dikey yığılıyor.
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Identity row — 01 Stack</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .row { display: flex; flex-direction: column; gap: 14px; }
+</style>
+</head><body>
+<main class="page">
+  <div class="nav">
+    <a href="index.html">← Designs</a>
+    <a class="active" href="1-stack.html">01 Stack</a>
+    <a href="2-flex-split.html">02 Flex Split</a>
+    <a href="3-hero.html">03 Hero</a>
+    <a href="4-picker-tile.html">04 Picker Tile</a>
+    <a href="5-cards-2line.html">05 2-line Cards</a>
+  </div>
+  <header class="page-head">
+    <div class="eyebrow">Design 01 / Vertical stack</div>
+    <h1>Her alan kendi satırında</h1>
+    <p>En basit ve en ferah çözüm: ATT&CK ve display name tam genişlikte, ayrı satırlarda. Dropdown alanın altında tam-genişlik, sıkışmıyor. Mobile'da hiç değişmiyor.</p>
+  </header>
+
+  <div class="glass-card">
+    <div class="section-title">Identity</div>
+
+    <div class="row">
+      <!-- ATT&CK technique -->
+      <div>
+        <div class="f-field is-focused">
+          <span class="label">ATT&CK technique <span class="req">*</span></span>
+          <input value="T1059" />
+        </div>
+        <div class="dropdown">
+          <div class="dropdown-row is-active">
+            <span class="id">T1059</span>
+            <span class="name">Command and Scripting Interpreter</span>
+            <span class="tag tag-execution">Execution</span>
+          </div>
+          <div class="dropdown-row">
+            <span class="id">T1059.001</span>
+            <span class="name">PowerShell</span>
+            <span class="tag tag-execution">Execution</span>
+          </div>
+          <div class="dropdown-row">
+            <span class="id">T1059.003</span>
+            <span class="name">Windows Command Shell</span>
+            <span class="tag tag-execution">Execution</span>
+          </div>
+          <div class="dropdown-row">
+            <span class="id">T1059.004</span>
+            <span class="name">Unix Shell</span>
+            <span class="tag tag-execution">Execution</span>
+          </div>
+          <div class="dropdown-row">
+            <span class="id">T1059.006</span>
+            <span class="name">Python</span>
+            <span class="tag tag-execution">Execution</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Display name -->
+      <div class="f-field">
+        <span class="label">Technique display name <span class="req">*</span></span>
+        <input value="Command and Scripting Interpreter" />
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Hissiyat:</strong> En basit ve en mobile-friendly seçenek. Dropdown da tam genişlikte olduğundan id/name/tactic chip rahatça sığıyor — şeffaflık opak yapıldığı için göz yorgunluğu yok. Web'de "iki alan yan yana sıkışsın" baskısı tamamen kayboluyor.
+  </div>
+</main>
+</body></html>

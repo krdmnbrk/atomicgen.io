@@ -1,0 +1,163 @@
+:root {
+  --bg: #07080B;
+  --bg-2: #0C0E14;
+  --text: #F0F2F5;
+  --text-muted: #9AA3AE;
+  --text-faint: #5E6772;
+  --accent: #FF5C39;
+  --accent-2: #FF8A66;
+  --accent-soft: rgba(255, 92, 57, 0.15);
+  --accent-ring: rgba(255, 92, 57, 0.35);
+  --glass-inset: rgba(15, 18, 24, 0.6);
+  --glass: rgba(20, 24, 32, 0.55);
+  --glass-stroke: rgba(255, 255, 255, 0.10);
+  --glass-stroke-strong: rgba(255, 255, 255, 0.16);
+  --dropdown-bg: #14181E;          /* opak — şeffaf değil */
+  --dropdown-bg-hover: #1B2029;
+  --dropdown-stroke: rgba(255, 255, 255, 0.12);
+  --error: #F45C7B;
+
+  --tac-execution: #FF5C39;
+  --tac-credential: #F45C7B;
+  --tac-discovery: #50D5E0;
+  --tac-defense: #4DDD96;
+  --tac-persistence: #C28FFF;
+  --tac-priv: #FFB347;
+  --tac-initial: #6FA9FF;
+  --tac-lateral: #B4D85A;
+  --tac-impact: #F76C6C;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(255, 92, 57, 0.08), transparent 60%),
+    radial-gradient(1000px 500px at -10% 110%, rgba(120, 80, 200, 0.10), transparent 60%),
+    var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+a { color: var(--accent-2); }
+
+.page { max-width: 980px; margin: 0 auto; padding: 48px 24px 96px; }
+.page-head { margin-bottom: 28px; }
+.page-head .eyebrow {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.18em;
+  color: var(--accent); font-weight: 600;
+}
+.page-head h1 {
+  font-size: 26px; font-weight: 600; margin: 6px 0 8px; letter-spacing: -0.01em;
+}
+.page-head p { margin: 0; color: var(--text-muted); font-size: 14px; }
+.nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+.nav a {
+  text-decoration: none; padding: 6px 12px; font-size: 12px;
+  border-radius: 999px; border: 1px solid var(--glass-stroke);
+  background: var(--glass); color: var(--text-muted);
+}
+.nav a.active {
+  background: var(--accent-soft); border-color: var(--accent-ring); color: var(--accent-2);
+}
+.section-title {
+  font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--text-faint); font-weight: 600; margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-title::before {
+  content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 999px;
+  border: 1px solid var(--accent); background: rgba(255,92,57,0.2);
+}
+.glass-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-stroke);
+  border-radius: 16px;
+  padding: 22px;
+}
+.note {
+  margin-top: 28px; padding: 14px 16px;
+  border: 1px dashed var(--glass-stroke); border-radius: 12px;
+  color: var(--text-muted); font-size: 12.5px; line-height: 1.55;
+  background: rgba(255,255,255,0.02);
+}
+.note strong { color: var(--text); }
+
+/* Inputs (filled-floating, matches the earlier mockup) */
+.f-field {
+  position: relative;
+  background: var(--glass-inset);
+  border: 1px solid var(--glass-stroke);
+  border-radius: 12px;
+  padding: 22px 14px 8px;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+}
+.f-field:hover { border-color: var(--glass-stroke-strong); }
+.f-field.is-focused {
+  border-color: var(--accent);
+  background: rgba(15, 18, 24, 0.85);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.f-field .label {
+  position: absolute; top: 6px; left: 14px;
+  font-size: 11px; font-weight: 600;
+  color: var(--text-faint);
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.f-field.is-focused .label { color: var(--accent-2); }
+.f-field input,
+.f-field textarea {
+  width: 100%; background: transparent; border: 0; outline: 0;
+  color: var(--text); font-family: inherit; font-size: 14px; padding: 0;
+}
+.f-field .req { color: var(--error); margin-left: 2px; }
+
+/* Dropdown — opak, ferah, yapılandırılmış */
+.dropdown {
+  margin-top: 6px;
+  background: var(--dropdown-bg);
+  border: 1px solid var(--dropdown-stroke);
+  border-radius: 14px;
+  box-shadow: 0 24px 48px -12px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.04) inset;
+  overflow: hidden;
+  max-height: 360px; overflow-y: auto;
+}
+.dropdown-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background .12s;
+}
+.dropdown-row:last-child { border-bottom: 0; }
+.dropdown-row:hover { background: var(--dropdown-bg-hover); }
+.dropdown-row.is-active { background: rgba(255,92,57,0.10); }
+.dropdown .id {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; font-weight: 500;
+  color: var(--accent-2);
+  min-width: 88px;
+}
+.dropdown .name {
+  font-size: 13.5px; color: var(--text);
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.tag {
+  display: inline-block;
+  padding: 2px 8px; font-size: 10.5px; font-weight: 500;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.05);
+  color: var(--text-muted);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.tag-execution { color: var(--tac-execution); border-color: rgba(255,92,57,0.35); background: rgba(255,92,57,0.08); }
+.tag-credential { color: var(--tac-credential); border-color: rgba(244,92,123,0.35); background: rgba(244,92,123,0.08); }
+.tag-discovery { color: var(--tac-discovery); border-color: rgba(80,213,224,0.35); background: rgba(80,213,224,0.08); }
+.tag-defense { color: var(--tac-defense); border-color: rgba(77,221,150,0.35); background: rgba(77,221,150,0.08); }
+.tag-persistence { color: var(--tac-persistence); border-color: rgba(194,143,255,0.35); background: rgba(194,143,255,0.08); }
+.tag-priv { color: var(--tac-priv); border-color: rgba(255,179,71,0.35); background: rgba(255,179,71,0.08); }
+.tag-initial { color: var(--tac-initial); border-color: rgba(111,169,255,0.35); background: rgba(111,169,255,0.08); }
+.tag-impact { color: var(--tac-impact); border-color: rgba(247,108,108,0.35); background: rgba(247,108,108,0.08); }

@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Identity row — 04 Picker tile</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 640px) { .row { grid-template-columns: 1fr; } }
+
+  .tile {
+    position: relative;
+    background: var(--glass-inset);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 12px;
+    padding: 12px 14px 12px 14px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, box-shadow .15s;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .tile:hover { border-color: var(--glass-stroke-strong); }
+  .tile .tile-label {
+    font-size: 11px; font-weight: 600; color: var(--text-faint);
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .tile .tile-value {
+    display: flex; align-items: center; gap: 10px; min-height: 22px;
+  }
+  .tile .tile-id {
+    font-family: 'JetBrains Mono', monospace; font-weight: 600;
+    color: var(--accent-2); font-size: 14px;
+  }
+  .tile .tile-name {
+    color: var(--text); font-size: 14px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .tile .tile-empty { color: var(--text-faint); font-size: 14px; }
+  .tile .chevron {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    color: var(--text-faint); font-size: 16px;
+  }
+  .tile .req { color: var(--error); }
+
+  /* Picker popover */
+  .picker-overlay {
+    position: fixed; inset: 0;
+    background: rgba(5, 7, 11, 0.6);
+    backdrop-filter: blur(6px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding-top: 12vh;
+    z-index: 100;
+  }
+  .picker {
+    width: 100%; max-width: 640px;
+    background: var(--dropdown-bg);
+    border: 1px solid var(--dropdown-stroke);
+    border-radius: 16px;
+    box-shadow: 0 32px 80px -16px rgba(0,0,0,0.85);
+    overflow: hidden;
+  }
+  .picker-search {
+    padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.06);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .picker-search input {
+    flex: 1; background: transparent; border: 0; outline: 0;
+    color: var(--text); font-size: 15px;
+  }
+  .picker-search input::placeholder { color: var(--text-faint); }
+  .picker-search .kbd {
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
+    padding: 2px 6px; border-radius: 4px;
+    background: rgba(255,255,255,0.06); color: var(--text-muted);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .picker-tactics {
+    display: flex; gap: 6px; padding: 10px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    overflow-x: auto;
+  }
+  .picker-tactics .tag { cursor: pointer; flex-shrink: 0; }
+  .picker-tactics .tag.is-on { background: rgba(255,92,57,0.18); color: var(--accent-2); border-color: var(--accent-ring); }
+  .picker-list { max-height: 50vh; overflow-y: auto; }
+</style>
+</head><body>
+<main class="page">
+  <div class="nav">
+    <a href="index.html">← Designs</a>
+    <a href="1-stack.html">01 Stack</a>
+    <a href="2-flex-split.html">02 Flex Split</a>
+    <a href="3-hero.html">03 Hero</a>
+    <a class="active" href="4-picker-tile.html">04 Picker Tile</a>
+    <a href="5-cards-2line.html">05 2-line Cards</a>
+  </div>
+  <header class="page-head">
+    <div class="eyebrow">Design 04 / Picker tile + dialog</div>
+    <h1>Inline değil, tıkla aç</h1>
+    <p>ATT&CK technique artık küçük bir "tile" — tıklanınca tam-zenginlikte bir picker dialog açılıyor: arama, tactic filtreleri, geniş satırlar. Form satırı her zaman aynı yükseklikte, dropdown asla diğer alanı kapatmıyor.</p>
+  </header>
+
+  <div class="glass-card">
+    <div class="section-title">Identity</div>
+
+    <div class="row">
+      <div class="tile" id="picker-trigger">
+        <span class="tile-label">ATT&CK technique <span class="req">*</span></span>
+        <div class="tile-value">
+          <span class="tile-id">T1059</span>
+          <span class="tile-name">Command and Scripting Interpreter</span>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+
+      <div class="f-field">
+        <span class="label">Technique display name <span class="req">*</span></span>
+        <input value="Command and Scripting Interpreter" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Picker popover (open by default for demo) -->
+  <div class="picker-overlay" id="picker">
+    <div class="picker">
+      <div class="picker-search">
+        <span style="color:var(--text-faint)">⌕</span>
+        <input placeholder="Search by ID or name (e.g. T1003 or 'credential dump')" autofocus />
+        <span class="kbd">esc</span>
+      </div>
+      <div class="picker-tactics">
+        <span class="tag is-on">All</span>
+        <span class="tag tag-initial">Initial Access</span>
+        <span class="tag tag-execution">Execution</span>
+        <span class="tag tag-persistence">Persistence</span>
+        <span class="tag tag-priv">Privilege Escalation</span>
+        <span class="tag tag-defense">Defense Evasion</span>
+        <span class="tag tag-credential">Credential Access</span>
+        <span class="tag tag-discovery">Discovery</span>
+      </div>
+      <div class="picker-list">
+        <div class="dropdown-row is-active">
+          <span class="id">T1059</span>
+          <span class="name">Command and Scripting Interpreter</span>
+          <span class="tag tag-execution">Execution</span>
+        </div>
+        <div class="dropdown-row">
+          <span class="id">T1059.001</span>
+          <span class="name">PowerShell</span>
+          <span class="tag tag-execution">Execution</span>
+        </div>
+        <div class="dropdown-row">
+          <span class="id">T1059.003</span>
+          <span class="name">Windows Command Shell</span>
+          <span class="tag tag-execution">Execution</span>
+        </div>
+        <div class="dropdown-row">
+          <span class="id">T1003</span>
+          <span class="name">OS Credential Dumping</span>
+          <span class="tag tag-credential">Credential Access</span>
+        </div>
+        <div class="dropdown-row">
+          <span class="id">T1003.001</span>
+          <span class="name">LSASS Memory</span>
+          <span class="tag tag-credential">Credential Access</span>
+        </div>
+        <div class="dropdown-row">
+          <span class="id">T1083</span>
+          <span class="name">File and Directory Discovery</span>
+          <span class="tag tag-discovery">Discovery</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Hissiyat:</strong> Inline autocomplete'in tüm yer-darlığı sorununu çözüyor — picker tam ekranın bir kısmında, arama + tactic filtresi + geniş satırlar. Form satırı sabit yükseklikte, asla diğer alanı kapatmıyor. Trade-off: bir tıklama eklenir, "yaz-seç" akışı yerine "tıkla-ara" akışı. Repo loader'ın picker'ı zaten varsa onunla aynı kalıbı kullanmak iyi sinyal.
+  </div>
+</main>
+<script>
+  // Demo: clicking trigger toggles picker (default open)
+  const t = document.getElementById('picker-trigger');
+  const p = document.getElementById('picker');
+  t.addEventListener('click', () => p.style.display = 'flex');
+  p.addEventListener('click', (e) => { if (e.target === p) p.style.display = 'none'; });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') p.style.display = 'none'; });
+</script>
+</body></html>

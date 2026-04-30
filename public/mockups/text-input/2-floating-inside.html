@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Text input — 02 Inside-Float</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css" />
+<style>
+  .float-field {
+    position: relative;
+    background: rgba(15, 18, 24, 0.65);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 12px;
+    padding: 22px 14px 8px;
+    transition: border-color .15s, background .15s, box-shadow .15s;
+  }
+  .float-field:hover { border-color: var(--glass-stroke-strong); }
+  .float-field:focus-within {
+    border-color: var(--accent);
+    background: rgba(15, 18, 24, 0.85);
+    box-shadow: 0 0 0 3px var(--accent-ring);
+  }
+  .float-field .label {
+    position: absolute;
+    top: 16px;
+    left: 14px;
+    color: var(--text-faint);
+    font-size: 14px;
+    pointer-events: none;
+    transition: top .15s ease, font-size .15s ease, color .15s ease;
+  }
+  .float-field input,
+  .float-field textarea {
+    width: 100%;
+    background: transparent;
+    border: 0;
+    outline: 0;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 0;
+    line-height: 1.55;
+  }
+  .float-field textarea { min-height: 80px; resize: vertical; }
+  /* Placeholder sadece label yukarı kalktığında görünür — yoksa label ile çakışır */
+  .float-field input::placeholder,
+  .float-field textarea::placeholder { color: transparent; }
+  .float-field.is-active input::placeholder,
+  .float-field.is-active textarea::placeholder,
+  .float-field:focus-within input::placeholder,
+  .float-field:focus-within textarea::placeholder { color: var(--text-faint); }
+  .float-field.is-active .label,
+  .float-field:focus-within .label {
+    top: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent-2);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .float-field.is-active:not(:focus-within) .label {
+    color: var(--text-faint);
+  }
+  .helper { font-size: 11.5px; color: var(--text-faint); padding: 6px 4px 0; }
+</style>
+</head>
+<body>
+  <main class="page">
+    <div class="nav">
+      <a href="index.html">← Designs</a>
+      <a href="1-stacked.html">01 Stacked</a>
+      <a class="active" href="2-floating-inside.html">02 Inside-Float</a>
+      <a href="3-chip-label.html">03 Chip</a>
+      <a href="4-underline-heading.html">04 Underline</a>
+      <a href="5-inline-prefix.html">05 Inline Key</a>
+    </div>
+
+    <header class="page-head">
+      <div class="eyebrow">Design 02 / Inside-floating label</div>
+      <h1>Label kutunun içinde, kenarı kesmiyor</h1>
+      <p>Material "filled" / Stripe stili — label boş alanda placeholder gibi durur, focus veya değer girince kutunun üst içine küçülür. Kenar çizgisi her zaman bütün; çentik yok.</p>
+    </header>
+
+    <div class="section-title">Identity</div>
+    <div class="section">
+      <div class="float-field is-active">
+        <span class="label">ATT&CK technique *</span>
+        <input class="mono" type="text" value="T1059.001" />
+      </div>
+      <div class="float-field is-active">
+        <span class="label">Technique display name</span>
+        <input type="text" value="PowerShell" />
+      </div>
+    </div>
+
+    <div class="section-title">Atomic test</div>
+    <div class="section">
+      <div class="float-field">
+        <span class="label">Test name *</span>
+        <input type="text" />
+      </div>
+      <div class="float-field">
+        <span class="label">Test description *</span>
+        <textarea placeholder="What does this test do? What artifact is left behind? How can a defender verify it ran?"></textarea>
+        <div class="helper">Markdown desteklenir.</div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>Hissiyat:</strong> Label hep "kutunun içinde" — sayfada başlık-input-başlık-input gürültüsü yok. Boşken alan büyük, dolduktan sonra label küçülerek değere yer açıyor. Border kesilmiyor, çentik UX'i kaybolmuyor.
+    </div>
+  </main>
+  <script>
+    document.querySelectorAll('.float-field').forEach((f) => {
+      const ctrl = f.querySelector('input,textarea');
+      const sync = () => f.classList.toggle('is-active', !!ctrl.value);
+      ctrl.addEventListener('input', sync);
+      sync();
+    });
+  </script>
+</body>
+</html>

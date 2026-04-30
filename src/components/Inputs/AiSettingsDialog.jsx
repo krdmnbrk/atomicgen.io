@@ -15,6 +15,7 @@ import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
 import { PROVIDER_LIST } from '../../utils/llm';
 import { useConfirm } from '../ConfirmDialog';
+import { inputSx } from '../inputStyles';
 
 export default function AiSettingsDialog({
     open,
@@ -98,6 +99,8 @@ export default function AiSettingsDialog({
                     </Alert>
                     <TextField
                         select
+                        variant="filled"
+                        sx={inputSx}
                         label="Provider"
                         value={providerId}
                         onChange={(e) => setProviderId(e.target.value)}
@@ -111,6 +114,8 @@ export default function AiSettingsDialog({
                     </TextField>
                     <TextField
                         select
+                        variant="filled"
+                        sx={inputSx}
                         label="Model"
                         value={model}
                         onChange={(e) => setModel(e.target.value)}
@@ -123,6 +128,8 @@ export default function AiSettingsDialog({
                         ))}
                     </TextField>
                     <TextField
+                        variant="filled"
+                        sx={inputSx}
                         label={`${provider.name} API key`}
                         value={draftKey}
                         onChange={(e) => { setDraftKey(e.target.value); setTestResult(null); }}

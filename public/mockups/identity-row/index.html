@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Identity row — 5 designs</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    display: flex; flex-direction: column;
+    text-decoration: none; color: inherit;
+    border: 1px solid var(--glass-stroke);
+    background: var(--glass);
+    border-radius: 14px;
+    padding: 16px 16px 14px;
+    transition: border-color .15s, transform .15s, background .15s;
+  }
+  .card:hover {
+    border-color: var(--accent-ring);
+    background: rgba(255,92,57,0.04);
+    transform: translateY(-1px);
+  }
+  .card .num {
+    font-size: 11px; color: var(--accent);
+    letter-spacing: 0.18em; text-transform: uppercase; font-weight: 600;
+  }
+  .card h3 {
+    margin: 4px 0 6px; font-size: 16px; font-weight: 600; letter-spacing: -0.005em;
+  }
+  .card p { margin: 0 0 12px; font-size: 12.5px; color: var(--text-muted); line-height: 1.5; }
+  .preview {
+    margin-top: auto;
+    background: rgba(15, 18, 24, 0.65);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 10px;
+    padding: 12px;
+    min-height: 84px;
+    font-size: 11px;
+  }
+  .mini-row { display: flex; gap: 6px; margin-bottom: 4px; }
+  .mini-row .b {
+    height: 22px; border: 1px solid var(--glass-stroke); border-radius: 6px;
+    background: rgba(15,18,24,0.65); flex: 1;
+  }
+  .mini-dd { background: var(--dropdown-bg); border: 1px solid var(--dropdown-stroke); border-radius: 6px; padding: 4px 6px; font-size: 10px; }
+  .mini-dd .li { display: flex; gap: 6px; padding: 3px 0; align-items: center; }
+  .mini-dd .li .pid { font-family: 'JetBrains Mono', monospace; color: var(--accent-2); }
+  .mini-dd .li .pn { color: var(--text-muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Per-design previews */
+  .p1 .stack { display: flex; flex-direction: column; gap: 4px; }
+  .p1 .b { width: 100%; }
+  .p2 .row { display: grid; grid-template-columns: 1fr 2fr; gap: 6px; }
+  .p3 .hero { background: rgba(255,92,57,0.06); border: 1px solid var(--accent-ring); border-radius: 6px; padding: 6px 8px; font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--accent-2); margin-bottom: 4px; }
+  .p3 .b-secondary { height: 18px; border: 1px dashed var(--glass-stroke); border-radius: 6px; }
+  .p4 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .p4 .tile { border: 1px solid var(--glass-stroke); border-radius: 6px; padding: 5px 8px; }
+  .p4 .tile .pid { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--accent-2); font-size: 11px; }
+  .p4 .tile .pn { color: var(--text-muted); font-size: 10px; }
+  .p5 .li { display: flex; flex-direction: column; gap: 1px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .p5 .li:last-child { border-bottom: 0; }
+  .p5 .li .top { display: flex; gap: 6px; }
+</style>
+</head><body>
+<main class="page">
+  <header class="page-head">
+    <div class="eyebrow">Mockups · IDENTITY row + dropdown</div>
+    <h1>ATT&CK + display name satırı için 5 yön</h1>
+    <p>Mevcut sıkışık satır + şeffaf-kalabalık dropdown sorununa beş farklı çözüm. Hepsinde dropdown opak, satırlar bol padding'li, mobile düzgün düşüyor — fark layout yaklaşımında.</p>
+  </header>
+
+  <div class="grid">
+    <a class="card" href="1-stack.html">
+      <div class="num">01 / Stack</div>
+      <h3>Vertical stack</h3>
+      <p>İki alan ayrı satırda, tam genişlik. Dropdown da tam genişlikte. En basit, en mobile-friendly.</p>
+      <div class="preview p1">
+        <div class="stack">
+          <div class="b"></div>
+          <div class="mini-dd">
+            <div class="li"><span class="pid">T1059</span><span class="pn">Command Interpreter</span><span class="tag tag-execution">Exec</span></div>
+            <div class="li"><span class="pid">T1059.001</span><span class="pn">PowerShell</span><span class="tag tag-execution">Exec</span></div>
+          </div>
+          <div class="b"></div>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="2-flex-split.html">
+      <div class="num">02 / Flex Split</div>
+      <h3>1fr / 2fr grid</h3>
+      <p>Yatay korunur ama oranlı: ATT&CK 1, display name 2. Bol gap, dar viewport'ta dikey iner.</p>
+      <div class="preview p2">
+        <div class="row">
+          <div class="b" style="height:42px"></div>
+          <div class="b" style="height:42px"></div>
+        </div>
+        <div class="mini-dd" style="margin-top:6px">
+          <div class="li"><span class="pid">T1059</span><span class="pn">Command Interpreter</span></div>
+          <div class="li"><span class="pid">T1059.001</span><span class="pn">PowerShell</span></div>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="3-hero.html">
+      <div class="num">03 / Hero</div>
+      <h3>ATT&CK kahraman</h3>
+      <p>Büyük mono hero kartı, display name onun altında dashed-border ikincil alan. Hiyerarşi net.</p>
+      <div class="preview p3">
+        <div class="hero">T1059  ·  Execution</div>
+        <div class="mini-dd">
+          <div class="li"><span class="pid">T1059.001</span><span class="pn">PowerShell</span></div>
+          <div class="li"><span class="pid">T1059.003</span><span class="pn">Windows Cmd</span></div>
+        </div>
+        <div class="b-secondary" style="margin-top:6px"></div>
+      </div>
+    </a>
+
+    <a class="card" href="4-picker-tile.html">
+      <div class="num">04 / Picker Tile</div>
+      <h3>Tıkla aç dialog</h3>
+      <p>Inline yok — ATT&CK küçük tile. Tıklanınca arama + tactic filtreli geniş picker dialog açılır.</p>
+      <div class="preview p4">
+        <div class="row">
+          <div class="tile">
+            <div class="pid">T1059</div>
+            <div class="pn">Cmd Interpreter</div>
+          </div>
+          <div class="b" style="height:36px"></div>
+        </div>
+        <div class="mini-dd" style="margin-top:6px; opacity:.6">
+          <div style="font-size:10px;color:var(--text-faint)">→ dialog opens with full picker</div>
+        </div>
+      </div>
+    </a>
+
+    <a class="card" href="5-cards-2line.html">
+      <div class="num">05 / 2-line Cards</div>
+      <h3>Layout aynı, dropdown zenginleşir</h3>
+      <p>Yatay 1.1/2 grid. Dropdown her satır 2 satırlık card: üstte id+name, altta tactic + sub bilgi.</p>
+      <div class="preview p5">
+        <div class="mini-row">
+          <div class="b"></div>
+          <div class="b" style="flex:2"></div>
+        </div>
+        <div class="mini-dd">
+          <div class="li">
+            <div class="top"><span class="pid">T1059.001</span><span class="pn">PowerShell</span></div>
+            <span style="font-size:9px;color:var(--text-faint)">Execution · sub of T1059</span>
+          </div>
+          <div class="li">
+            <div class="top"><span class="pid">T1003</span><span class="pn">Credential Dumping</span></div>
+            <span style="font-size:9px;color:var(--text-faint)">Credential Access</span>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <div class="note" style="margin-top:32px">
+    <strong>Nasıl seçeyim:</strong>
+    en az değişiklikle hem satır hem dropdown'ı çözmek istiyorsan <strong>05</strong> (mevcut yatay düzen kalır);
+    sıkışmayı tamamen ortadan kaldırmak ve mobile-first istiyorsan <strong>01</strong>;
+    yatay düzen + nefes istiyorsan ortayolda <strong>02</strong>;
+    "ATT&CK kimliği" hissini öne çıkarmak için <strong>03</strong>;
+    dropdown'ın inline'da yer kapatmasını tamamen ortadan kaldırmak için <strong>04</strong>.
+    Hangisini seçtiğini söyle, gerçek koda port edeyim.
+  </div>
+</main>
+</body></html>

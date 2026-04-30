@@ -10,7 +10,7 @@ import {
     InputLabel,
     Select,
     Checkbox,
-    OutlinedInput,
+    FilledInput,
     Chip,
     Paper,
     Accordion,
@@ -18,21 +18,21 @@ import {
     AccordionDetails,
     Tooltip,
     IconButton,
-    Autocomplete,
 } from '@mui/material';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import TerminalRoundedIcon from '@mui/icons-material/TerminalRounded';
 import CleaningServicesOutlinedIcon from '@mui/icons-material/CleaningServicesOutlined';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
-import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
 import PropTypes from 'prop-types';
 import Arguments from './Inputs/Arguments';
 import Dependency from './Inputs/Dependency';
+import TechniquePicker from './Inputs/TechniquePicker';
 import Editor from './Editor';
 import InputButtons from './Inputs/InputButtons';
 import AiAssistant from './Inputs/AiAssistant';
 import useAtomicIndex from '../hooks/useAtomicIndex';
+import { inputSx } from './inputStyles';
 
 const ITEM_HEIGHT = 48;
 const ITEM_PADDING_TOP = 8;
@@ -72,21 +72,6 @@ const sectionTitleSx = {
     alignItems: 'center',
     gap: 1,
     mb: 2,
-};
-
-const inputSx = {
-    '& .MuiOutlinedInput-root': {
-        background: 'var(--glass-inset)',
-        backdropFilter: 'blur(10px)',
-        borderRadius: 2,
-        '& fieldset': { borderColor: 'var(--glass-stroke)' },
-        '&:hover fieldset': { borderColor: 'var(--glass-stroke-strong)' },
-        '&.Mui-focused fieldset': {
-            borderColor: 'primary.main',
-            borderWidth: 1,
-            boxShadow: '0 0 0 4px var(--accent-soft)',
-        },
-    },
 };
 
 function SectionTitle({ icon, children, meta }) {
@@ -217,22 +202,22 @@ function Inputs({
             : `https://attack.mitre.org/techniques/${base}/`;
     })();
 
-    // ATT&CK technique autocomplete (loads from atomic-red-team CSV index)
+    // ATT&CK technique picker (loads from atomic-red-team CSV index)
     const { data: atIndex } = useAtomicIndex();
     const techniqueOptions = atIndex?.techniques || [];
+    const techniqueTests = atIndex?.tests || [];
     const handleTechniqueChange = (_event, value) => {
-        if (typeof value === 'string') {
-            // Free-text — accept as TID, leave display name alone
-            setInputs((prev) => ({ ...prev, attack_technique: value || null }));
-        } else if (value && value.id) {
-            // Picked from list — set both TID and display name
+        if (value && value.id) {
+            // From picker (index match or custom TID). display_name field
+            // is no longer user-editable, so always derive it: prefer the
+            // technique's name, fall back to the TID itself for custom TIDs.
             setInputs((prev) => ({
                 ...prev,
                 attack_technique: value.id,
-                display_name: value.name || prev.display_name,
+                display_name: value.name || value.id,
             }));
         } else {
-            setInputs((prev) => ({ ...prev, attack_technique: null }));
+            setInputs((prev) => ({ ...prev, attack_technique: null, display_name: null }));
         }
     };
 
@@ -375,102 +360,14 @@ function Inputs({
                 >
                     Identity
                 </SectionTitle>
-                <Box sx={{ display: 'flex', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>
-                    <Autocomplete
-                        freeSolo
-                        autoSelect
-                        size="small"
-                        options={techniqueOptions}
+                <Box sx={{ mb: 2 }}>
+                    <TechniquePicker
                         value={inputs.attack_technique || ''}
-                        onChange={handleTechniqueChange}
-                        getOptionLabel={(o) => (typeof o === 'string' ? o : o.id || '')}
-                        filterOptions={(opts, state) => {
-                            const q = state.inputValue.trim().toLowerCase();
-                            if (!q) return opts.slice(0, 50);
-                            const matches = opts.filter(
-                                (o) =>
-                                    o.id.toLowerCase().includes(q) ||
-                                    (o.name || '').toLowerCase().includes(q)
-                            );
-                            return matches.slice(0, 50);
-                        }}
-                        renderOption={(props, option) => {
-                            const { key, ...rest } = props;
-                            return (
-                                <li key={key} {...rest} style={{ ...rest.style, padding: '6px 10px' }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-                                        <Box
-                                            sx={{
-                                                fontFamily: "'JetBrains Mono', monospace",
-                                                fontSize: 11,
-                                                color: 'primary.main',
-                                                minWidth: 80,
-                                                fontWeight: 500,
-                                            }}
-                                        >
-                                            {option.id}
-                                        </Box>
-                                        <Box
-                                            sx={{
-                                                fontSize: 13,
-                                                color: 'text.primary',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                whiteSpace: 'nowrap',
-                                                flex: 1,
-                                            }}
-                                        >
-                                            {option.name}
-                                        </Box>
-                                    </Box>
-                                </li>
-                            );
-                        }}
-                        sx={{ ...inputSx, flex: '0 0 240px' }}
-                        renderInput={(params) => (
-                            <TextField
-                                {...params}
-                                required
-                                label="ATT&CK technique"
-                                placeholder="T1053.005 or 'scheduled task'"
-                                InputProps={{
-                                    ...params.InputProps,
-                                    endAdornment: (
-                                        <>
-                                            {techniqueAttackUrl && (
-                                                <Tooltip title="Open on attack.mitre.org">
-                                                    <IconButton
-                                                        component="a"
-                                                        href={techniqueAttackUrl}
-                                                        target="_blank"
-                                                        rel="noopener"
-                                                        size="small"
-                                                        sx={{ color: 'primary.main', mr: -0.5 }}
-                                                    >
-                                                        <OpenInNewRoundedIcon sx={{ fontSize: 16 }} />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            )}
-                                            {params.InputProps.endAdornment}
-                                        </>
-                                    ),
-                                }}
-                            />
-                        )}
-                    />
-                    <TextField
+                        onChange={(picked) => handleTechniqueChange(null, picked)}
+                        options={techniqueOptions}
+                        tests={techniqueTests}
+                        attackUrl={techniqueAttackUrl}
                         required
-                        spellCheck="false"
-                        label="Technique display name"
-                        placeholder="Scheduled Task/Job: Scheduled Task"
-                        id="display_name"
-                        size="small"
-                        name="display_name"
-                        value={inputs.display_name || ''}
-                        onChange={handleChangeText}
-                        title={inputs.display_name || ''}
-                        slotProps={{ htmlInput: { title: inputs.display_name || '' } }}
-                        sx={{ ...inputSx, flex: '1 1 280px' }}
                     />
                 </Box>
                 <Box sx={{ mb: 2 }}>
@@ -478,6 +375,7 @@ function Inputs({
                         required
                         spellCheck="false"
                         fullWidth
+                        variant="filled"
                         label="Test name"
                         id="name"
                         size="small"
@@ -494,6 +392,7 @@ function Inputs({
                         fullWidth
                         multiline
                         minRows={3}
+                        variant="filled"
                         label="Test description"
                         placeholder="What does this test do? What artifact is left behind? How can a defender verify it ran?"
                         id="description"
@@ -537,7 +436,7 @@ function Inputs({
                     })()}
                 </Box>
                 <Box>
-                    <FormControl required size="small" fullWidth sx={inputSx}>
+                    <FormControl required size="small" fullWidth variant="filled" sx={inputSx}>
                         <InputLabel id="supported-platforms-label">Supported Platforms</InputLabel>
                         <Select
                             labelId="supported-platforms-label"
@@ -545,7 +444,7 @@ function Inputs({
                             multiple
                             value={inputs.supported_platforms}
                             onChange={handleChangeSupportedPlatforms}
-                            input={<OutlinedInput id="select-multiple-chip" label="Supported Platforms" />}
+                            input={<FilledInput id="select-multiple-chip" />}
                             renderValue={(selected) => (
                                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                                     {selected.map((value) => (
@@ -638,13 +537,12 @@ function Inputs({
                 </SectionTitle>
 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-                    <FormControl required size="small" sx={{ ...inputSx, flex: '1 1 220px', minWidth: 200 }}>
+                    <FormControl required size="small" variant="filled" sx={{ ...inputSx, flex: '1 1 220px', minWidth: 200 }}>
                         <InputLabel id="attack_executor">Attack Executor</InputLabel>
                         <Select
                             labelId="attack_executor"
                             id="attack_executor_select"
                             value={inputs.executor.name}
-                            label="Attack Executor"
                             onChange={handleChangeExecutorType}
                             MenuProps={MenuProps}
                         >

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Text input — 01 Stacked</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css" />
+<style>
+  .field { display: flex; flex-direction: column; gap: 8px; }
+  .field-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.01em;
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .field-label .hint {
+    font-weight: 400;
+    color: var(--text-faint);
+    font-size: 11.5px;
+  }
+  .field-input,
+  .field-textarea {
+    width: 100%;
+    background: rgba(15, 18, 24, 0.6);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 11px 14px;
+    outline: none;
+    transition: border-color .15s, background .15s, box-shadow .15s;
+  }
+  .field-textarea {
+    min-height: 96px;
+    resize: vertical;
+    line-height: 1.55;
+  }
+  .field-input::placeholder,
+  .field-textarea::placeholder { color: var(--text-faint); }
+  .field-input:hover,
+  .field-textarea:hover { border-color: var(--glass-stroke-strong); }
+  .field-input:focus,
+  .field-textarea:focus {
+    border-color: var(--accent);
+    background: rgba(15, 18, 24, 0.8);
+    box-shadow: 0 0 0 3px var(--accent-ring);
+  }
+  .field-helper {
+    font-size: 11.5px;
+    color: var(--text-faint);
+    margin-top: -2px;
+  }
+  .field-error .field-input,
+  .field-error .field-textarea { border-color: var(--error); }
+  .field-error .field-helper { color: var(--error); }
+</style>
+</head>
+<body>
+  <main class="page">
+    <div class="nav">
+      <a href="index.html">← Designs</a>
+      <a class="active" href="1-stacked.html">01 Stacked</a>
+      <a href="2-floating-inside.html">02 Inside-Float</a>
+      <a href="3-chip-label.html">03 Chip</a>
+      <a href="4-underline-heading.html">04 Underline</a>
+      <a href="5-inline-prefix.html">05 Inline Key</a>
+    </div>
+
+    <header class="page-head">
+      <div class="eyebrow">Design 01 / Stacked label</div>
+      <h1>Label oturur, alan altında durur</h1>
+      <p>Label bir başlık gibi, kutunun çentiğine girmiyor. Klasik, sakin, en az süpriz veren yaklaşım — Linear, GitHub, Vercel ve Stripe'da bu kalıp.</p>
+    </header>
+
+    <div class="section-title">Identity</div>
+    <div class="section">
+      <div class="field">
+        <label class="field-label" for="d1-tid">
+          ATT&CK technique<span class="req">*</span>
+          <span class="hint">e.g. T1003.001</span>
+        </label>
+        <input class="field-input mono" id="d1-tid" type="text" value="T1059.001" />
+      </div>
+      <div class="field">
+        <label class="field-label" for="d1-display">Technique display name</label>
+        <input class="field-input" id="d1-display" type="text" value="PowerShell" />
+      </div>
+    </div>
+
+    <div class="section-title">Atomic test</div>
+    <div class="section">
+      <div class="field">
+        <label class="field-label" for="d1-name">Test name<span class="req">*</span></label>
+        <input class="field-input" id="d1-name" type="text" placeholder="Short, action-oriented title" />
+      </div>
+      <div class="field">
+        <label class="field-label" for="d1-desc">
+          Test description<span class="req">*</span>
+          <span class="hint">2–3 sentences</span>
+        </label>
+        <textarea class="field-textarea" id="d1-desc" placeholder="What does this test do? What artifact is left behind? How can a defender verify it ran?"></textarea>
+        <div class="field-helper">Markdown desteklenir.</div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>Hissiyat:</strong> Label kutuyu kesmiyor — okuma akışı yukarıdan aşağıya. Çoklu input art arda dizildiğinde göz hizası bozulmuyor. Required yıldızı label içinde, okumayı engellemiyor.
+    </div>
+  </main>
+</body>
+</html>

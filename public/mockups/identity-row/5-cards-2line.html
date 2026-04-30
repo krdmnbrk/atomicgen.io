@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Identity row — 05 2-line cards</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 2fr);
+    gap: 18px;
+    position: relative;
+  }
+  @media (max-width: 640px) { .row { grid-template-columns: 1fr; } }
+  .technique-wrap { position: relative; }
+  .technique-wrap .dropdown {
+    position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 5;
+  }
+  /* 2-line dropdown rows */
+  .dropdown.two-line .dropdown-row {
+    flex-direction: column; align-items: flex-start; gap: 4px;
+    padding: 12px 16px;
+  }
+  .dropdown.two-line .dropdown-row .top {
+    display: flex; align-items: baseline; gap: 12px; width: 100%;
+  }
+  .dropdown.two-line .dropdown-row .id {
+    min-width: 0; font-size: 12.5px;
+  }
+  .dropdown.two-line .dropdown-row .name {
+    font-size: 14px; font-weight: 500; flex: 1;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .dropdown.two-line .dropdown-row .meta {
+    display: flex; gap: 6px; align-items: center;
+    font-size: 11.5px; color: var(--text-muted);
+  }
+</style>
+</head><body>
+<main class="page">
+  <div class="nav">
+    <a href="index.html">← Designs</a>
+    <a href="1-stack.html">01 Stack</a>
+    <a href="2-flex-split.html">02 Flex Split</a>
+    <a href="3-hero.html">03 Hero</a>
+    <a href="4-picker-tile.html">04 Picker Tile</a>
+    <a class="active" href="5-cards-2line.html">05 2-line Cards</a>
+  </div>
+  <header class="page-head">
+    <div class="eyebrow">Design 05 / Two-line dropdown cards</div>
+    <h1>Yatay korunur, dropdown 2 satır</h1>
+    <p>Layout neredeyse aynı (1.1fr / 2fr). Asıl iyileştirme dropdown'da: her option iki satırlı bir card — üstte mono ID + kalın display name, altta tactic + alt-teknik bilgisi. Daha bol padding, opak arka plan, hover'da kart vurgusu.</p>
+  </header>
+
+  <div class="glass-card">
+    <div class="section-title">Identity</div>
+
+    <div class="row">
+      <div class="technique-wrap">
+        <div class="f-field is-focused">
+          <span class="label">ATT&CK technique <span class="req">*</span></span>
+          <input value="T1059" />
+        </div>
+        <div class="dropdown two-line">
+          <div class="dropdown-row is-active">
+            <div class="top">
+              <span class="id">T1059</span>
+              <span class="name">Command and Scripting Interpreter</span>
+            </div>
+            <div class="meta">
+              <span class="tag tag-execution">Execution</span>
+              <span>· 8 sub-techniques</span>
+            </div>
+          </div>
+          <div class="dropdown-row">
+            <div class="top">
+              <span class="id">T1059.001</span>
+              <span class="name">PowerShell</span>
+            </div>
+            <div class="meta">
+              <span class="tag tag-execution">Execution</span>
+              <span>· sub of T1059</span>
+            </div>
+          </div>
+          <div class="dropdown-row">
+            <div class="top">
+              <span class="id">T1059.003</span>
+              <span class="name">Windows Command Shell</span>
+            </div>
+            <div class="meta">
+              <span class="tag tag-execution">Execution</span>
+              <span>· sub of T1059</span>
+            </div>
+          </div>
+          <div class="dropdown-row">
+            <div class="top">
+              <span class="id">T1059.004</span>
+              <span class="name">Unix Shell</span>
+            </div>
+            <div class="meta">
+              <span class="tag tag-execution">Execution</span>
+              <span>· sub of T1059</span>
+            </div>
+          </div>
+          <div class="dropdown-row">
+            <div class="top">
+              <span class="id">T1059.006</span>
+              <span class="name">Python</span>
+            </div>
+            <div class="meta">
+              <span class="tag tag-execution">Execution</span>
+              <span>· sub of T1059</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="f-field">
+        <span class="label">Technique display name <span class="req">*</span></span>
+        <input value="Command and Scripting Interpreter" />
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Hissiyat:</strong> Layout değişmiyor — sadece dropdown çok daha okunaklı. Her option daha fazla bilgi taşıyor (tactic + sub-teknik bağlamı), ama padding ve dikey ayrımı sayesinde "rahat". 02 ile birleşince mevcut kalıbı korurken hem satırı hem dropdown'ı çözüyor — minimum kod değişikliği, maksimum okunabilirlik.
+  </div>
+</main>
+</body></html>
