@@ -24,8 +24,14 @@ export const anthropicProvider = {
         ];
 
         const body = {
+            // Atomic tests with multi-step commands + dependencies + cleanup
+            // routinely produce 3–6K output tokens. 16384 leaves enough headroom
+            // that we should never hit max_tokens in practice; the stop_reason
+            // check below remains as a safety net for any future edge case.
+            // All listed models (Sonnet 4.6 / Opus 4.7 / Haiku 4.5) support
+            // 16K+ output tokens.
             model: model || this.defaultModel,
-            max_tokens: 2048,
+            max_tokens: 16384,
             system,
             tools: [
                 {
@@ -69,6 +75,15 @@ export const anthropicProvider = {
         const toolUse = (data.content || []).find((c) => c.type === 'tool_use');
         if (!toolUse || !toolUse.input) {
             throw new Error('Provider returned no tool call. Try rephrasing your request.');
+        }
+        // Truncation guard: when the model hits max_tokens mid-tool-call, the
+        // tool_use input ends up partial (e.g. just {action:"generate"} with no
+        // test_data) and looks like a successful response. Surface this clearly
+        // instead of the generic "Unexpected response" downstream.
+        if (data.stop_reason === 'max_tokens') {
+            throw new Error(
+                'Response was truncated — the model hit its output-token limit before finishing. Try a shorter or more specific prompt, or refine in smaller steps.'
+            );
         }
         return toolUse.input;
     },
