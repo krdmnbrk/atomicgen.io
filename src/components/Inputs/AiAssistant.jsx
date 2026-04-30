@@ -81,9 +81,24 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
         setLoadingTest(true);
         try {
             const res = await fetch(techniqueYamlUrl(item.tid));
-            if (!res.ok) throw new Error(`Failed to fetch ${item.tid} (${res.status}).`);
+            if (!res.ok) throw new Error(`Failed to fetch ${item.tid} (HTTP ${res.status}).`);
             const text = await res.text();
-            const parsed = yaml.load(text);
+            const trimmed = (text || '').trim();
+            if (!trimmed) throw new Error('Repository returned an empty response.');
+            if (/^\s*<(?:!doctype|html|head|body|meta|script|title)\b/i.test(trimmed)) {
+                throw new Error(
+                    'Repository returned HTML instead of YAML — your network or proxy is likely blocking raw.githubusercontent.com.'
+                );
+            }
+            let parsed;
+            try {
+                parsed = yaml.load(text);
+            } catch (yamlErr) {
+                throw new Error(`Response was not valid YAML (${yamlErr.message || yamlErr}).`);
+            }
+            if (!parsed || typeof parsed !== 'object' || !parsed.attack_technique) {
+                throw new Error('Response did not match the expected atomic-red-team schema.');
+            }
             const tests = Array.isArray(parsed?.atomic_tests) ? parsed.atomic_tests : [];
             let test = tests.find((t) => t?.name === item.testName);
             if (!test) {
@@ -243,7 +258,12 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
 
             {indexError && (
                 <Alert severity="warning" sx={{ mt: 1.25, borderRadius: 2 }}>
-                    Could not load technique index. Suggestions disabled.
+                    <Typography sx={{ fontWeight: 600, mb: 0.25, fontSize: 13 }}>
+                        Atomic-red-team index unavailable
+                    </Typography>
+                    <Typography sx={{ fontSize: 12.5 }}>
+                        {indexError.message || 'Suggestions disabled.'}
+                    </Typography>
                 </Alert>
             )}
             {error && (

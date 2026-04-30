@@ -60,7 +60,10 @@ export default function RepoLoaderButton({
     const confirm = useConfirm();
 
     React.useEffect(() => {
-        if (error) setInputButtonErrors(['Failed to load technique index from atomic-red-team repository.']);
+        if (error) {
+            const detail = error.message || 'Unknown error';
+            setInputButtonErrors([`Failed to load technique index — ${detail}`]);
+        }
     }, [error, setInputButtonErrors]);
 
     // Group tests by tactic → technique → count. Also keep per-technique
@@ -182,22 +185,41 @@ export default function RepoLoaderButton({
         setLoadingYaml(true);
         try {
             const res = await fetch(techniqueYamlUrl(tech.id));
-            if (!res.ok) throw new Error(`YAML fetch failed: ${res.status}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const text = await res.text();
-            const parsed = yaml.load(text);
-            if (parsed && Array.isArray(parsed.atomic_tests) && parsed.atomic_tests.length > 0) {
-                setFileContent(parsed);
-                setAtomicNames(parsed.atomic_tests.map((t) => t.name));
-                setTechniqueName(parsed.display_name);
-                setTechniqueId(parsed.attack_technique);
-                setOpen(false);
-                setSelectionOpen(true);
-            } else {
-                setInputButtonErrors([`No atomic tests found in ${tech.id}.`]);
+            // Detect proxy / captive-portal interception that returns HTML
+            // with HTTP 200 — yaml.load would otherwise silently produce junk.
+            const trimmed = (text || '').trim();
+            if (!trimmed) throw new Error('Empty response from repository.');
+            if (/^\s*<(?:!doctype|html|head|body|meta|script|title)\b/i.test(trimmed)) {
+                throw new Error(
+                    'The repository returned HTML instead of YAML — likely your network or proxy is blocking raw.githubusercontent.com.'
+                );
             }
+            let parsed;
+            try {
+                parsed = yaml.load(text);
+            } catch (yamlErr) {
+                throw new Error(`Response was not valid YAML (${yamlErr.message || yamlErr}).`);
+            }
+            // Real atomic-red-team YAML must have these keys.
+            if (!parsed || typeof parsed !== 'object' || !parsed.attack_technique || !Array.isArray(parsed.atomic_tests)) {
+                throw new Error('Response did not match the expected atomic-red-team schema.');
+            }
+            if (parsed.atomic_tests.length === 0) {
+                setInputButtonErrors([`No atomic tests found in ${tech.id}.`]);
+                return;
+            }
+            setFileContent(parsed);
+            setAtomicNames(parsed.atomic_tests.map((t) => t.name));
+            setTechniqueName(parsed.display_name);
+            setTechniqueId(parsed.attack_technique);
+            setOpen(false);
+            setSelectionOpen(true);
         } catch (e) {
             console.error('Failed to load technique YAML', e);
-            setInputButtonErrors([`Failed to load ${tech.id} from repository.`]);
+            const detail = e?.message || 'Unknown error';
+            setInputButtonErrors([`Failed to load ${tech.id} — ${detail}`]);
         } finally {
             setLoadingYaml(false);
         }
@@ -354,8 +376,16 @@ export default function RepoLoaderButton({
                     </Box>
                 ) : error ? (
                     <Box sx={{ p: 3 }}>
-                        <Alert severity="error" variant="outlined">
-                            Could not load technique index. Check your network and try again.
+                        <Alert severity="warning" variant="outlined" sx={{ borderRadius: 2 }}>
+                            <Typography sx={{ fontWeight: 600, mb: 0.5 }}>
+                                Could not load atomic-red-team index
+                            </Typography>
+                            <Typography sx={{ fontSize: 13, mb: 1 }}>
+                                {error.message || 'Unknown error.'}
+                            </Typography>
+                            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                                The CSV index lives at <Box component="code" sx={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, background: 'rgba(0,0,0,0.3)', px: 0.5, borderRadius: 0.5 }}>raw.githubusercontent.com</Box>. If you are behind a corporate proxy, it may be intercepting the response — try a different network or ask IT to allow the host.
+                            </Typography>
                         </Alert>
                     </Box>
                 ) : (

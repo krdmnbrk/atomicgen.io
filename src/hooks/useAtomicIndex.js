@@ -51,16 +51,58 @@ function parse(csvText) {
     };
 }
 
+// Headers we expect in the first line of the atomic-red-team CSV.
+// Used to detect proxy / captive-portal interception that returns HTTP 200
+// with an HTML body instead of the actual CSV.
+const REQUIRED_CSV_HEADERS = ['Tactic', 'Technique #', 'Technique Name', 'Test Name'];
+
+function validateCsv(text) {
+    const trimmed = (text || '').trim();
+    if (!trimmed) {
+        const e = new Error('The atomic-red-team index response was empty.');
+        e.code = 'INDEX_EMPTY';
+        throw e;
+    }
+    // Most corporate proxies / captive portals serve an HTML page on block.
+    if (/^\s*<(?:!doctype|html|head|body|meta|script|title)\b/i.test(trimmed)) {
+        const e = new Error(
+            'The atomic-red-team index endpoint returned HTML instead of a CSV — likely your network or proxy is blocking raw.githubusercontent.com.'
+        );
+        e.code = 'INDEX_NOT_CSV';
+        throw e;
+    }
+    const firstLine = trimmed.split(/\r?\n/, 1)[0];
+    const missing = REQUIRED_CSV_HEADERS.filter((h) => !firstLine.includes(h));
+    if (missing.length) {
+        const e = new Error(
+            `The index response did not look like the expected CSV (missing header: ${missing.join(', ')}). Your network may be rewriting the response.`
+        );
+        e.code = 'INDEX_BAD_HEADER';
+        throw e;
+    }
+}
+
 function fetchIndex() {
     if (cache) return Promise.resolve(cache);
     if (!inflight) {
         inflight = fetch(INDEX_URL)
             .then((r) => {
-                if (!r.ok) throw new Error(`Index fetch failed: ${r.status}`);
+                if (!r.ok) {
+                    const e = new Error(`Atomic-red-team index fetch failed (HTTP ${r.status}).`);
+                    e.code = 'INDEX_HTTP_ERROR';
+                    throw e;
+                }
                 return r.text();
             })
             .then((t) => {
-                cache = parse(t);
+                validateCsv(t);
+                const parsed = parse(t);
+                if (!parsed.tests || parsed.tests.length === 0) {
+                    const e = new Error('Index parsed but contained no atomic tests.');
+                    e.code = 'INDEX_EMPTY';
+                    throw e;
+                }
+                cache = parsed;
                 return cache;
             })
             .catch((e) => {
