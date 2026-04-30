@@ -239,20 +239,6 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
                     }}
                 >
                     Generate
-                    <Box
-                        component="kbd"
-                        sx={{
-                            display: { xs: 'none', sm: 'inline-block' },
-                            background: 'rgba(0,0,0,0.22)',
-                            px: 0.6,
-                            py: 0.15,
-                            borderRadius: 0.5,
-                            fontSize: 10,
-                            fontFamily: "'JetBrains Mono', monospace",
-                        }}
-                    >
-                        ⌘↵
-                    </Box>
                 </Box>
             </Paper>
 

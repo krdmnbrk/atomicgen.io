@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import Inputs from './components/Inputs';
 import YamlContent from './components/YamlContent';
 import Navbar from './components/Navbar';
-import Footer from './components/Footer';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import GlobalStyles from '@mui/material/GlobalStyles';
@@ -614,7 +613,6 @@ function App() {
         </Alert>
       </Snackbar>
 
-      <Footer />
       </ConfirmProvider>
     </ThemeProvider>
   );

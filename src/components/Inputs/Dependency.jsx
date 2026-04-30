@@ -14,6 +14,7 @@ import Typography from '@mui/material/Typography';
 import { Tooltip } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
 import Editor from '../Editor';
+import { inputSx } from '../inputStyles';
 
 // Dependency component for managing prerequisite commands and dependencies
 function Dependency({ darkMode, inputs, setInputs, executor_names }) {
@@ -133,13 +134,12 @@ function Dependency({ darkMode, inputs, setInputs, executor_names }) {
                         <InfoIcon onClick={handleTooltipOpen} />
                     </Tooltip>
                 </ClickAwayListener>
-                <FormControl required size="small" sx={{ width: "60%" }}>
-                    <InputLabel id="dependency_executor" style={{ fontSize: 14 }}>Dependency Executor *</InputLabel>
+                <FormControl required size="small" variant="filled" sx={{ ...inputSx, width: "60%" }}>
+                    <InputLabel id="dependency_executor">Dependency Executor *</InputLabel>
                     <Select
                         labelId="dependency_executor"
                         id="dependency_executor_select"
                         value={inputs.dependency_executor_name}
-                        label="Dependency Executor *"
                         onChange={handleChangeDependencyExecutorType}
                     >
                         <MenuItem value="">None</MenuItem>
@@ -167,6 +167,8 @@ function Dependency({ darkMode, inputs, setInputs, executor_names }) {
                         spellCheck="false"
                         fullWidth
                         size='small'
+                        variant="filled"
+                        sx={inputSx}
                         key={`description-${index}`}
                         label="Dependency Description"
                         value={dependency.description}
