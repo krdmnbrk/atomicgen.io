@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Repo loader · 06 Tactic browse + live preview</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="_shared.css" />
+<style>
+  /* Hybrid of 02 (tactic rail) + 05 (live YAML preview).
+     3 columns: Tactic rail · Technique list · YAML preview. */
+  .modal-shell {
+    width: min(1080px, calc(100vw - 32px));
+  }
+  .panel {
+    background: var(--glass-modal);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid var(--glass-stroke-strong);
+    border-radius: 16px;
+    box-shadow: var(--shadow-modal);
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  /* ── header ──────────────────────────── */
+  .head {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--glass-stroke);
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent);
+  }
+  .head-icon {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: grid; place-items: center;
+    color: white;
+    flex-shrink: 0;
+  }
+  .head-titles { flex-shrink: 0; }
+  .head-titles h2 { font-size: 14px; font-weight: 600; margin: 0; }
+  .head-titles .sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-top: 2px;
+  }
+  .head-search {
+    flex: 1;
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 9px;
+    padding: 7px 12px;
+    transition: border-color 0.14s;
+  }
+  .head-search:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(255, 92, 57, 0.10);
+  }
+  .head-search input {
+    flex: 1;
+    background: transparent;
+    border: none; outline: none;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+  }
+  .head-search input::placeholder { color: var(--text-faint); }
+  .meta-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-faint);
+    flex-shrink: 0;
+    padding: 3px 8px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 6px;
+  }
+
+  /* ── body 3-col ───────────────────────── */
+  .body {
+    display: grid;
+    grid-template-columns: 200px 280px 1fr;
+    height: 60vh;
+    min-height: 480px;
+  }
+
+  /* ── col 1: tactics ───────────────────── */
+  .tactics {
+    background: rgba(0,0,0,0.22);
+    border-right: 1px solid var(--glass-stroke);
+    overflow: auto;
+    padding: 8px 6px;
+  }
+  .col-label {
+    padding: 6px 10px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    color: var(--text-faint);
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .tac-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 12.5px;
+    transition: background 0.1s, color 0.1s;
+  }
+  .tac-row:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+  .tac-row.active {
+    background: rgba(255, 92, 57, 0.12);
+    color: var(--text);
+  }
+  .tac-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .tac-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tac-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-faint);
+  }
+
+  /* ── col 2: technique list ────────────── */
+  .techniques {
+    overflow: auto;
+    border-right: 1px solid var(--glass-stroke);
+    background: rgba(0,0,0,0.10);
+  }
+  .tech-row {
+    display: grid;
+    grid-template-columns: 86px 1fr;
+    column-gap: 10px;
+    padding: 11px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    transition: background 0.1s;
+  }
+  .tech-row:hover { background: rgba(255,255,255,0.04); }
+  .tech-row.active {
+    background: linear-gradient(90deg, rgba(255, 92, 57, 0.16), rgba(255, 92, 57, 0.04));
+    border-left: 2px solid var(--accent);
+    padding-left: 12px;
+  }
+  .tr-tid {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 500;
+    align-self: start;
+    margin-top: 2px;
+  }
+  .tr-name {
+    font-size: 13px;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tr-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-faint);
+    margin-top: 3px;
+  }
+
+  /* ── col 3: live preview ──────────────── */
+  .preview { display: flex; flex-direction: column; }
+  .pv-head {
+    padding: 14px 18px 12px;
+    border-bottom: 1px solid var(--glass-stroke);
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent);
+  }
+  .pv-tid {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 92, 57, 0.3);
+    display: inline-block;
+    font-weight: 500;
+  }
+  .pv-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 8px 0 4px;
+    line-height: 1.3;
+  }
+  .pv-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .pv-meta .dot { color: var(--text-faint); margin: 0 6px; }
+
+  .pv-tabs {
+    display: flex; gap: 2px;
+    padding: 6px 18px 0;
+    border-bottom: 1px solid var(--glass-stroke);
+    background: rgba(0,0,0,0.10);
+    overflow-x: auto;
+  }
+  .pv-tab {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 8px 11px;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .pv-tab:hover { color: var(--text); }
+  .pv-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .pv-tab .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    opacity: 0.7;
+    margin-right: 4px;
+  }
+
+  .pv-yaml {
+    flex: 1;
+    overflow: auto;
+    padding: 14px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-muted);
+    background: rgba(0,0,0,0.20);
+  }
+  .yk { color: #ff8a66; }
+  .yv { color: #d6cf7a; }
+  .yc { color: #5e6772; font-style: italic; }
+  .ys { color: #50d5e0; }
+
+  /* ── footer ───────────────────────────── */
+  .footer {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-top: 1px solid var(--glass-stroke);
+    background: rgba(0,0,0,0.22);
+    gap: 12px;
+  }
+  .footer-info {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-faint);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+  }
+  .footer-keys {
+    display: flex; gap: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+  .shortcut { display: inline-flex; align-items: center; gap: 4px; }
+  .footer-actions { display: flex; gap: 8px; }
+</style>
+</head>
+<body>
+
+<div class="stage"></div>
+<div class="dim"></div>
+<div class="position-label">popup top = 25vh · hybrid 02 + 05</div>
+<div class="crumb"><a href="index.html">← all designs</a></div>
+
+<div class="modal-shell">
+  <div class="panel">
+
+    <!-- header -->
+    <div class="head">
+      <span class="head-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18M3 12h18M3 17h12"/></svg>
+      </span>
+      <div class="head-titles">
+        <h2>atomic-red-team</h2>
+        <div class="sub">14 tactics · 1,521 atomic tests</div>
+      </div>
+      <div class="head-search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-faint)"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.35-4.35"/></svg>
+        <input type="text" placeholder="Search by T-ID, technique name, or keyword…" value="" />
+      </div>
+      <span class="meta-pill">132 in selection</span>
+    </div>
+
+    <!-- 3-col body -->
+    <div class="body">
+
+      <!-- col 1: tactics rail -->
+      <div class="tactics">
+        <div class="col-label">Tactics</div>
+        <div class="tac-row"><span class="tac-dot" style="background:#6FA9FF"></span><span class="tac-name">Initial Access</span><span class="tac-count">36</span></div>
+        <div class="tac-row"><span class="tac-dot" style="background:var(--accent)"></span><span class="tac-name">Execution</span><span class="tac-count">112</span></div>
+        <div class="tac-row"><span class="tac-dot" style="background:#C28FFF"></span><span class="tac-name">Persistence</span><span class="tac-count">198</span></div>
+        <div class="tac-row"><span class="tac-dot" style="background:#FFB347"></span><span class="tac-name">Priv. Escalation</span><span class="tac-count">142</span></div>
+        <div class="tac-row"><span class="tac-dot" style="background:#4DDD96"></span><span class="tac-name">Defense Evasion</span><span class="tac-count">240</span></div>
+        <div class="tac-row active"><span class="tac-dot" style="background:#F45C7B"></span><span class="tac-name">Credential Access</span><span class="tac-count">132</span></div>
+        <div class="tac-row"><span class="tac-dot" style="background:#50D5E0"></span><span class="tac-name">Discovery</span><span class="tac-count">186</span></div>
+        <div class="tac-row"><span class="tac-dot" style="background:#B4D85A"></span><span class="tac-name">Lateral Movement</span><span class="tac-count">68</span></div>
+        <div class="tac-row"><span class="tac-dot" style="background:#FF8AC1"></span><span class="tac-name">Collection</span><span class="tac-count">82</span></div>
+        <div class="tac-row"><span class="tac-dot" style="background:#A0A0A0"></span><span class="tac-name">Command and Control</span><span class="tac-count">56</span></div>
+        <div class="tac-row"><span class="tac-dot" style="background:#E5C07B"></span><span class="tac-name">Exfiltration</span><span class="tac-count">36</span></div>
+        <div class="tac-row"><span class="tac-dot" style="background:#D85959"></span><span class="tac-name">Impact</span><span class="tac-count">88</span></div>
+      </div>
+
+      <!-- col 2: technique list -->
+      <div class="techniques">
+        <div class="col-label">Credential Access · 8 of 132</div>
+        <div class="tech-row active">
+          <span class="tr-tid">T1003.001</span>
+          <div>
+            <div class="tr-name">OS Credential Dumping: LSASS Memory</div>
+            <div class="tr-meta">windows · 12 tests</div>
+          </div>
+        </div>
+        <div class="tech-row">
+          <span class="tr-tid">T1003.002</span>
+          <div>
+            <div class="tr-name">OS Credential Dumping: SAM</div>
+            <div class="tr-meta">windows · 4 tests</div>
+          </div>
+        </div>
+        <div class="tech-row">
+          <span class="tr-tid">T1003.003</span>
+          <div>
+            <div class="tr-name">OS Credential Dumping: NTDS</div>
+            <div class="tr-meta">windows · 6 tests</div>
+          </div>
+        </div>
+        <div class="tech-row">
+          <span class="tr-tid">T1003.008</span>
+          <div>
+            <div class="tr-name">/etc/passwd and /etc/shadow</div>
+            <div class="tr-meta">linux · 3 tests</div>
+          </div>
+        </div>
+        <div class="tech-row">
+          <span class="tr-tid">T1110.001</span>
+          <div>
+            <div class="tr-name">Brute Force: Password Guessing</div>
+            <div class="tr-meta">all · 8 tests</div>
+          </div>
+        </div>
+        <div class="tech-row">
+          <span class="tr-tid">T1552.001</span>
+          <div>
+            <div class="tr-name">Unsecured Credentials: in Files</div>
+            <div class="tr-meta">windows · linux · 5 tests</div>
+          </div>
+        </div>
+        <div class="tech-row">
+          <span class="tr-tid">T1555.003</span>
+          <div>
+            <div class="tr-name">Credentials from Browsers</div>
+            <div class="tr-meta">windows · macos · 7 tests</div>
+          </div>
+        </div>
+        <div class="tech-row">
+          <span class="tr-tid">T1558.003</span>
+          <div>
+            <div class="tr-name">Kerberoasting</div>
+            <div class="tr-meta">windows · 2 tests</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- col 3: live preview -->
+      <div class="preview">
+        <div class="pv-head">
+          <span class="pv-tid">T1003.001</span>
+          <div class="pv-title">OS Credential Dumping: LSASS Memory</div>
+          <div class="pv-meta">credential-access<span class="dot">·</span>windows<span class="dot">·</span>12 atomic tests</div>
+        </div>
+        <div class="pv-tabs">
+          <button class="pv-tab active"><span class="num">1</span>ProcDump</button>
+          <button class="pv-tab"><span class="num">2</span>Comsvcs</button>
+          <button class="pv-tab"><span class="num">3</span>Mimikatz</button>
+          <button class="pv-tab"><span class="num">4</span>Out-Minidump</button>
+          <button class="pv-tab"><span class="num">5</span>NanoDump</button>
+          <button class="pv-tab">+ 7 more</button>
+        </div>
+        <div class="pv-yaml"><span class="yc"># Atomic 1 — Dump LSASS.exe Memory using ProcDump</span><br>
+<span class="yk">name:</span> <span class="yv">Dump LSASS.exe Memory using ProcDump</span><br>
+<span class="yk">description:</span> <span class="yv">|</span><br>
+&nbsp;&nbsp;The memory of <span class="ys">lsass.exe</span> is often dumped for offline credential<br>
+&nbsp;&nbsp;theft attacks. Adversaries commonly perform offline analysis<br>
+&nbsp;&nbsp;with Mimikatz to extract plaintext passwords and hashes.<br>
+<span class="yk">supported_platforms:</span><br>
+&nbsp;&nbsp;- <span class="yv">windows</span><br>
+<span class="yk">input_arguments:</span><br>
+&nbsp;&nbsp;<span class="yk">output_file:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="yk">type:</span> <span class="yv">path</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="yk">description:</span> <span class="yv">Path where dump will be written</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="yk">default:</span> <span class="yv">"%TEMP%\\lsass_dump.dmp"</span><br>
+&nbsp;&nbsp;<span class="yk">procdump_path:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="yk">type:</span> <span class="yv">path</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="yk">default:</span> <span class="yv">"C:\\Tools\\procdump.exe"</span><br>
+<span class="yk">executor:</span><br>
+&nbsp;&nbsp;<span class="yk">name:</span> <span class="yv">command_prompt</span><br>
+&nbsp;&nbsp;<span class="yk">elevation_required:</span> <span class="yv">true</span><br>
+&nbsp;&nbsp;<span class="yk">command:</span> <span class="yv">|</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;#{procdump_path} -accepteula -ma lsass.exe #{output_file}<br>
+        </div>
+      </div>
+    </div>
+
+    <!-- footer -->
+    <div class="footer">
+      <span class="footer-info">Live preview · pick a tab to scan a different atomic before loading</span>
+      <div class="footer-keys">
+        <span class="shortcut"><kbd>↑</kbd><kbd>↓</kbd>technique</span>
+        <span class="shortcut"><kbd>↵</kbd>load</span>
+      </div>
+      <div class="footer-actions">
+        <button class="btn">Cancel</button>
+        <button class="btn btn-primary">Load Atomic 1 →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

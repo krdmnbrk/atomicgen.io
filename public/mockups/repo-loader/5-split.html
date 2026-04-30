@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Repo loader · 05 Split preview</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="_shared.css" />
+<style>
+  .modal-shell { width: min(960px, calc(100vw - 32px)); }
+  .panel {
+    background: var(--glass-modal);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid var(--glass-stroke-strong);
+    border-radius: 16px;
+    box-shadow: var(--shadow-modal);
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+  }
+  .head {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--glass-stroke);
+  }
+  .head-title { font-size: 14px; font-weight: 600; }
+  .head-search {
+    flex: 1;
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 9px;
+    padding: 7px 12px;
+  }
+  .head-search input {
+    flex: 1;
+    background: transparent;
+    border: none; outline: none;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+  }
+  .meta-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-faint);
+    flex-shrink: 0;
+  }
+
+  .body {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    height: 56vh;
+    min-height: 460px;
+  }
+  .list {
+    border-right: 1px solid var(--glass-stroke);
+    overflow: auto;
+    background: rgba(0,0,0,0.18);
+  }
+  .list-row {
+    display: grid;
+    grid-template-columns: 86px 1fr;
+    gap: 10px;
+    padding: 11px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    transition: background 0.1s;
+  }
+  .list-row:hover { background: rgba(255,255,255,0.04); }
+  .list-row.active {
+    background: linear-gradient(90deg, rgba(255, 92, 57, 0.14), transparent);
+    border-left: 2px solid var(--accent);
+    padding-left: 12px;
+  }
+  .lr-tid {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .lr-name {
+    font-size: 13px;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .lr-name .secondary {
+    display: block;
+    font-size: 10px;
+    color: var(--text-faint);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 2px;
+  }
+
+  .preview {
+    display: flex; flex-direction: column;
+  }
+  .preview-head {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--glass-stroke);
+    background: rgba(0,0,0,0.12);
+  }
+  .preview-tid {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 92, 57, 0.3);
+    display: inline-block;
+    font-weight: 500;
+  }
+  .preview-title { font-size: 16px; font-weight: 600; margin: 6px 0 4px; }
+  .preview-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .preview-tabs {
+    display: flex; gap: 2px;
+    padding: 8px 18px 0;
+    border-bottom: 1px solid var(--glass-stroke);
+  }
+  .preview-tab {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 8px 12px;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .preview-tab:hover { color: var(--text); }
+  .preview-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .preview-yaml {
+    flex: 1;
+    overflow: auto;
+    padding: 14px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-muted);
+    background: rgba(0,0,0,0.18);
+  }
+  .yk { color: #ff8a66; }
+  .yv { color: #d6cf7a; }
+  .yc { color: #5e6772; font-style: italic; }
+
+  .footer {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    border-top: 1px solid var(--glass-stroke);
+    background: rgba(0,0,0,0.2);
+  }
+  .footer-info {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+</style>
+</head>
+<body>
+
+<div class="stage"></div>
+<div class="dim"></div>
+<div class="position-label">popup top = 25vh</div>
+<div class="crumb"><a href="index.html">← all 5 designs</a></div>
+
+<div class="modal-shell">
+  <div class="panel">
+    <div class="head">
+      <span class="head-title">atomic-red-team</span>
+      <div class="head-search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-faint)"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.35-4.35"/></svg>
+        <input type="text" placeholder="Search by T-ID or technique name…" value="dump" />
+      </div>
+      <span class="meta-pill">14 matches</span>
+    </div>
+
+    <div class="body">
+      <div class="list">
+        <div class="list-row active">
+          <span class="lr-tid">T1003.001</span>
+          <span class="lr-name">LSASS Memory<span class="secondary">credential-access · windows</span></span>
+        </div>
+        <div class="list-row">
+          <span class="lr-tid">T1003.002</span>
+          <span class="lr-name">Security Account Manager<span class="secondary">credential-access · windows</span></span>
+        </div>
+        <div class="list-row">
+          <span class="lr-tid">T1003.003</span>
+          <span class="lr-name">NTDS<span class="secondary">credential-access · windows</span></span>
+        </div>
+        <div class="list-row">
+          <span class="lr-tid">T1003.008</span>
+          <span class="lr-name">/etc/passwd and /etc/shadow<span class="secondary">credential-access · linux</span></span>
+        </div>
+        <div class="list-row">
+          <span class="lr-tid">T1005</span>
+          <span class="lr-name">Data from Local System<span class="secondary">collection · windows · linux</span></span>
+        </div>
+        <div class="list-row">
+          <span class="lr-tid">T1115</span>
+          <span class="lr-name">Clipboard Data<span class="secondary">collection · all</span></span>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-head">
+          <span class="preview-tid">T1003.001</span>
+          <div class="preview-title">OS Credential Dumping: LSASS Memory</div>
+          <div class="preview-meta">credential-access · windows · 12 atomic tests</div>
+        </div>
+        <div class="preview-tabs">
+          <button class="preview-tab active">Atomic 1</button>
+          <button class="preview-tab">Atomic 2</button>
+          <button class="preview-tab">Atomic 3</button>
+          <button class="preview-tab">+ 9 more</button>
+        </div>
+        <div class="preview-yaml"><span class="yc"># Atomic 1 — Dump LSASS.exe Memory using ProcDump</span><br>
+<span class="yk">name:</span> <span class="yv">Dump LSASS.exe Memory using ProcDump</span><br>
+<span class="yk">description:</span> <span class="yv">|</span><br>
+&nbsp;&nbsp;The memory of lsass.exe is often dumped for offline credential theft attacks.<br>
+&nbsp;&nbsp;Adversaries commonly perform this offline analysis with Mimikatz.<br>
+<span class="yk">supported_platforms:</span><br>
+&nbsp;&nbsp;- <span class="yv">windows</span><br>
+<span class="yk">input_arguments:</span><br>
+&nbsp;&nbsp;<span class="yk">output_file:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="yk">type:</span> <span class="yv">path</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="yk">default:</span> <span class="yv">"%TEMP%\\lsass_dump.dmp"</span><br>
+<span class="yk">executor:</span><br>
+&nbsp;&nbsp;<span class="yk">name:</span> <span class="yv">command_prompt</span><br>
+&nbsp;&nbsp;<span class="yk">elevation_required:</span> <span class="yv">true</span><br>
+&nbsp;&nbsp;<span class="yk">command:</span> <span class="yv">|</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;procdump.exe -accepteula -ma lsass.exe #{output_file}<br>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span class="footer-info">Live preview — pick a test from the tabs to load all 12 atomics into the form</span>
+      <button class="btn btn-primary">Load Atomic 1 →</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

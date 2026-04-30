@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Repo loader popup — 5 designs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="_shared.css" />
+<style>
+  body { padding: 0; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 60px 24px 48px; }
+  .header { margin-bottom: 36px; }
+  .kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.10em; text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  h1 { font-size: 36px; font-weight: 600; margin: 0 0 10px; letter-spacing: -0.02em; }
+  .lede { color: var(--text-muted); font-size: 16px; max-width: 640px; line-height: 1.55; }
+  .lede code {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  .card {
+    background: var(--glass);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 16px;
+    padding: 24px;
+    text-decoration: none;
+    color: var(--text);
+    transition: all 0.18s;
+    display: flex; flex-direction: column;
+  }
+  .card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 16px 40px -8px rgba(0,0,0,0.4), 0 0 0 1px rgba(255, 92, 57, 0.2);
+  }
+  .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    margin-bottom: 8px;
+    letter-spacing: 0.10em;
+    font-weight: 600;
+  }
+  .title { font-size: 20px; font-weight: 600; margin: 0 0 8px; letter-spacing: -0.01em; }
+  .desc { color: var(--text-muted); font-size: 13px; line-height: 1.55; margin: 0 0 14px; flex: 1; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag {
+    font-size: 10px;
+    color: var(--text-muted);
+    background: rgba(0,0,0,0.25);
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--glass-stroke);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .tag.hero {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: rgba(255, 92, 57, 0.3);
+  }
+
+  .footer-line {
+    margin-top: 28px;
+    text-align: center;
+    color: var(--text-faint);
+    font-size: 12px;
+  }
+  .footer-line a { color: var(--accent); text-decoration: none; }
+  .footer-line a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="header">
+    <div class="kicker">— Load from atomic-red-team</div>
+    <h1>5 popup design directions</h1>
+    <p class="lede">Each mockup positions the popup at <code>top: 25vh</code> (so the modal opens between the top edge and the page center, not dead-center). Same data set in every design — searching for credential dumping techniques.</p>
+  </div>
+
+  <div class="grid">
+    <a class="card" href="1-palette.html">
+      <div class="num">— 01</div>
+      <div class="title">Command palette</div>
+      <div class="desc">Cmd-K style. Single search input, live results below grouped by relevance, footer with keyboard shortcuts. Feels like Spotlight or VS Code's command bar — fast, keyboard-driven.</div>
+      <div class="tags">
+        <span class="tag hero">Keyboard-first</span>
+        <span class="tag">Single column</span>
+        <span class="tag">Compact</span>
+      </div>
+    </a>
+
+    <a class="card" href="2-tactics.html">
+      <div class="num">— 02</div>
+      <div class="title">Tactic browser</div>
+      <div class="desc">Left rail with all 14 MITRE tactics + counts. Right pane shows techniques in the selected tactic. Browseable for users who don't know exact T-IDs but know the kill-chain phase they're after.</div>
+      <div class="tags">
+        <span class="tag hero">Browseable</span>
+        <span class="tag">Tactic-grouped</span>
+        <span class="tag">Discovery</span>
+      </div>
+    </a>
+
+    <a class="card" href="3-cards.html">
+      <div class="num">— 03</div>
+      <div class="title">Card grid</div>
+      <div class="desc">Search bar + filter tabs (All / Trending / Recently added) above a 2-column grid of technique cards. Each card shows T-ID, name, tactic, platforms, and atomic-test count. Visual and scannable.</div>
+      <div class="tags">
+        <span class="tag hero">Card grid</span>
+        <span class="tag">Filter tabs</span>
+        <span class="tag">Visual</span>
+      </div>
+    </a>
+
+    <a class="card" href="4-spotlight.html">
+      <div class="num">— 04</div>
+      <div class="title">Glass spotlight</div>
+      <div class="desc">No card chrome — just a floating frosted-glass search field with each result row floating below as its own glass capsule. Minimal, premium, Apple-Spotlight feel. Selected row gets an accent gradient.</div>
+      <div class="tags">
+        <span class="tag hero">Minimal</span>
+        <span class="tag">Frosted</span>
+        <span class="tag">Premium</span>
+      </div>
+    </a>
+
+    <a class="card" href="5-split.html">
+      <div class="num">— 05</div>
+      <div class="title">Split preview</div>
+      <div class="desc">Two-pane: search + results list on the left, live YAML preview of the selected technique on the right (with tabs for each atomic test). User can scan the YAML before committing — reduces "load and undo" cycles.</div>
+      <div class="tags">
+        <span class="tag hero">Live preview</span>
+        <span class="tag">Two-pane</span>
+        <span class="tag">Confidence</span>
+      </div>
+    </a>
+
+    <a class="card" href="6-tactic-preview.html" style="grid-column: 1 / -1; border-color: rgba(255, 92, 57, 0.4); background: linear-gradient(135deg, rgba(255, 92, 57, 0.08), var(--glass));">
+      <div class="num">— 06 · 02 + 05 hybrid</div>
+      <div class="title">Tactic browse + live preview</div>
+      <div class="desc">Three columns: tactic rail on the left for browsing the kill-chain, technique list in the middle scoped to the selected tactic (or filtered by global search), live YAML preview on the right with one tab per atomic test. Combines 02's discoverability with 05's confidence-before-commit.</div>
+      <div class="tags">
+        <span class="tag hero">3-pane</span>
+        <span class="tag">Tactic-grouped</span>
+        <span class="tag">Live preview</span>
+        <span class="tag">Search overrides</span>
+      </div>
+    </a>
+  </div>
+
+  <div class="footer-line">
+    Open the live app at <a href="/">atomicgen.io</a> · current popup lives in <code>RepoLoaderButton.jsx</code>
+  </div>
+</div>
+
+</body>
+</html>

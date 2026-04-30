@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Repo loader · 03 Card grid</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="_shared.css" />
+<style>
+  .modal-shell { width: min(820px, calc(100vw - 32px)); }
+  .panel {
+    background: var(--glass-modal);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid var(--glass-stroke-strong);
+    border-radius: 16px;
+    box-shadow: var(--shadow-modal);
+    overflow: hidden;
+  }
+  .panel-head {
+    padding: 18px 22px 14px;
+    border-bottom: 1px solid var(--glass-stroke);
+  }
+  .panel-title {
+    display: flex; align-items: center; gap: 10px;
+    margin: 0 0 14px;
+  }
+  .badge-icon {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: grid; place-items: center;
+    color: white;
+    flex-shrink: 0;
+  }
+  .panel-title h2 { font-size: 16px; font-weight: 600; margin: 0; }
+  .panel-title .sub { color: var(--text-muted); font-size: 12px; margin-top: 1px; }
+  .top-row {
+    display: flex; gap: 10px;
+    align-items: center;
+  }
+  .search-bar {
+    flex: 1;
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 10px;
+    padding: 9px 14px;
+  }
+  .search-bar:focus-within { border-color: var(--accent); }
+  .search-bar input {
+    flex: 1;
+    background: transparent;
+    border: none; outline: none;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .filter-tabs {
+    display: flex; gap: 4px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 10px;
+    padding: 3px;
+  }
+  .filter-tab {
+    padding: 6px 12px;
+    border-radius: 7px;
+    font-size: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+  }
+  .filter-tab.active {
+    background: var(--accent);
+    color: white;
+    font-weight: 500;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 14px 20px 20px;
+    max-height: 50vh;
+    overflow: auto;
+  }
+  .card {
+    border: 1px solid var(--glass-stroke);
+    border-radius: 12px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.14s;
+    background: rgba(0,0,0,0.18);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 116px;
+  }
+  .card:hover {
+    border-color: var(--accent);
+    background: rgba(255, 92, 57, 0.06);
+    transform: translateY(-1px);
+  }
+  .card-top {
+    display: flex; align-items: center;
+    justify-content: space-between;
+  }
+  .card-tid {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-weight: 500;
+    border: 1px solid rgba(255, 92, 57, 0.25);
+  }
+  .card-tactic {
+    font-size: 10px;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .card-name {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.35;
+    color: var(--text);
+  }
+  .card-meta {
+    margin-top: auto;
+    display: flex; gap: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+  .card-meta .dot { color: var(--text-faint); }
+  .platform {
+    color: var(--text-muted);
+  }
+</style>
+</head>
+<body>
+
+<div class="stage"></div>
+<div class="dim"></div>
+<div class="position-label">popup top = 25vh</div>
+<div class="crumb"><a href="index.html">← all 5 designs</a></div>
+
+<div class="modal-shell">
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">
+        <span class="badge-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        </span>
+        <div>
+          <h2>Browse atomic-red-team library</h2>
+          <div class="sub">Pick a technique to load its atomic tests into the form</div>
+        </div>
+      </div>
+      <div class="top-row">
+        <div class="search-bar">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-faint)"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.35-4.35"/></svg>
+          <input type="text" placeholder="Search 1,521 techniques…" />
+        </div>
+        <div class="filter-tabs">
+          <button class="filter-tab active">All</button>
+          <button class="filter-tab">Trending</button>
+          <button class="filter-tab">Recently added</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-top">
+          <span class="card-tid">T1003.001</span>
+          <span class="card-tactic">credential-access</span>
+        </div>
+        <div class="card-name">OS Credential Dumping: LSASS Memory</div>
+        <div class="card-meta"><span class="platform">windows</span><span class="dot">·</span><span>12 atomic tests</span></div>
+      </div>
+      <div class="card">
+        <div class="card-top">
+          <span class="card-tid">T1059.001</span>
+          <span class="card-tactic">execution</span>
+        </div>
+        <div class="card-name">Command and Scripting Interpreter: PowerShell</div>
+        <div class="card-meta"><span class="platform">windows</span><span class="dot">·</span><span>34 atomic tests</span></div>
+      </div>
+      <div class="card">
+        <div class="card-top">
+          <span class="card-tid">T1547.001</span>
+          <span class="card-tactic">persistence</span>
+        </div>
+        <div class="card-name">Boot or Logon Autostart Execution: Registry Run Keys</div>
+        <div class="card-meta"><span class="platform">windows</span><span class="dot">·</span><span>9 atomic tests</span></div>
+      </div>
+      <div class="card">
+        <div class="card-top">
+          <span class="card-tid">T1053.005</span>
+          <span class="card-tactic">execution</span>
+        </div>
+        <div class="card-name">Scheduled Task/Job: Scheduled Task</div>
+        <div class="card-meta"><span class="platform">windows</span><span class="dot">·</span><span>14 atomic tests</span></div>
+      </div>
+      <div class="card">
+        <div class="card-top">
+          <span class="card-tid">T1562.001</span>
+          <span class="card-tactic">defense-evasion</span>
+        </div>
+        <div class="card-name">Impair Defenses: Disable or Modify Tools</div>
+        <div class="card-meta"><span class="platform">windows · linux · macos</span><span class="dot">·</span><span>22 atomic tests</span></div>
+      </div>
+      <div class="card">
+        <div class="card-top">
+          <span class="card-tid">T1105</span>
+          <span class="card-tactic">command-and-control</span>
+        </div>
+        <div class="card-name">Ingress Tool Transfer</div>
+        <div class="card-meta"><span class="platform">windows · linux · macos</span><span class="dot">·</span><span>11 atomic tests</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

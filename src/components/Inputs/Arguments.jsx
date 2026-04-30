@@ -23,14 +23,19 @@ const DEFAULT_BY_TYPE = {
 
 function Arguments({ darkMode, errors, setErrors, inputs, setInputs }) {
     const lastAddedRef = useRef(null);
+    // Track which rows have been "touched" (interacted with). We only surface
+    // empty-name errors for touched rows so a freshly-added blank row doesn't
+    // immediately scream at the user.
+    const [touched, setTouched] = React.useState({});
 
     function hasDuplicateNames(data) {
-        const names = data.map((obj) => (obj.name || '').trim());
+        const names = data
+            .map((obj) => (obj.name || '').trim())
+            .filter((n) => n.length > 0);
         return new Set(names).size !== names.length;
     }
-    function hasEmptyNames(data) {
-        const names = data.map((obj) => (obj.name || '').trim());
-        return names.includes('');
+    function hasEmptyNamesAfterTouch(data) {
+        return data.some((obj, idx) => touched[idx] && !(obj.name || '').trim());
     }
 
     useEffect(() => {
@@ -38,11 +43,12 @@ function Arguments({ darkMode, errors, setErrors, inputs, setInputs }) {
         if (hasDuplicateNames(inputs.input_arguments)) {
             newErrors.push('Argument names must be unique.');
         }
-        if (hasEmptyNames(inputs.input_arguments)) {
+        if (hasEmptyNamesAfterTouch(inputs.input_arguments)) {
             newErrors.push('Argument names cannot be empty.');
         }
         setErrors(newErrors);
-    }, [inputs.input_arguments, setErrors]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [inputs.input_arguments, touched, setErrors]);
 
     const handleInputArgumentChange = (index, field, value) => {
         setInputs((prev) => {
@@ -84,20 +90,18 @@ function Arguments({ darkMode, errors, setErrors, inputs, setInputs }) {
 
     return (
         <Box>
-            {/* Compact table-style header */}
+            {/* Compact table-style header — desktop only */}
             {args.length > 0 && (
                 <Box
                     sx={{
-                        display: 'grid',
+                        display: { xs: 'none', sm: 'grid' },
                         gridTemplateColumns: '1fr 110px 1fr 1.5fr 32px',
                         gap: 1,
                         px: 1,
                         pb: 0.5,
-                        fontSize: 10,
-                        fontWeight: 600,
-                        color: 'var(--text-faint)',
-                        letterSpacing: '0.08em',
-                        textTransform: 'uppercase',
+                        fontSize: 11,
+                        fontWeight: 500,
+                        color: 'text.secondary',
                     }}
                 >
                     <Box>Name</Box>
@@ -114,11 +118,15 @@ function Arguments({ darkMode, errors, setErrors, inputs, setInputs }) {
                     key={`input-argument-${index}`}
                     sx={{
                         display: 'grid',
-                        gridTemplateColumns: '1fr 110px 1fr 1.5fr 32px',
-                        gap: 1,
+                        gridTemplateColumns: { xs: '1fr 90px 32px', sm: '1fr 110px 1fr 1.5fr 32px' },
+                        gridTemplateAreas: {
+                            xs: `'name type del'\n'default default del'\n'desc desc del'`,
+                            sm: `'name type default desc del'`,
+                        },
+                        gap: { xs: 0.75, sm: 1 },
                         alignItems: 'center',
                         mb: 0.75,
-                        py: 0.5,
+                        py: { xs: 1, sm: 0.5 },
                         background: 'var(--glass-inset)',
                         border: '1px solid var(--glass-stroke)',
                         borderRadius: 1.5,
@@ -132,8 +140,10 @@ function Arguments({ darkMode, errors, setErrors, inputs, setInputs }) {
                         placeholder="argument_name"
                         value={arg.name || ''}
                         onChange={(e) => handleInputArgumentChange(index, 'name', e.target.value)}
+                        onBlur={() => setTouched((t) => ({ ...t, [index]: true }))}
                         inputRef={index === args.length - 1 ? lastAddedRef : undefined}
                         sx={{
+                            gridArea: 'name',
                             '& .MuiInput-input': {
                                 fontFamily: "'JetBrains Mono', monospace",
                                 fontSize: 12,
@@ -163,6 +173,7 @@ function Arguments({ darkMode, errors, setErrors, inputs, setInputs }) {
                         }}
                         disableUnderline
                         sx={{
+                            gridArea: 'type',
                             '& .MuiSelect-select': {
                                 fontSize: 11,
                                 fontFamily: "'JetBrains Mono', monospace",
@@ -182,10 +193,11 @@ function Arguments({ darkMode, errors, setErrors, inputs, setInputs }) {
                         size="small"
                         variant="standard"
                         spellCheck="false"
-                        placeholder={DEFAULT_BY_TYPE[arg.type] ?? ''}
+                        placeholder={DEFAULT_BY_TYPE[arg.type] ?? 'default'}
                         value={arg.default ?? ''}
                         onChange={(e) => handleInputArgumentChange(index, 'default', e.target.value)}
                         sx={{
+                            gridArea: 'default',
                             '& .MuiInput-input': {
                                 fontFamily: "'JetBrains Mono', monospace",
                                 fontSize: 11.5,
@@ -202,6 +214,7 @@ function Arguments({ darkMode, errors, setErrors, inputs, setInputs }) {
                         value={arg.description || ''}
                         onChange={(e) => handleInputArgumentChange(index, 'description', e.target.value)}
                         sx={{
+                            gridArea: 'desc',
                             '& .MuiInput-input': { fontSize: 12, py: 0.5 },
                             '& .MuiInput-underline:before': { borderBottom: 'none' },
                         }}
@@ -210,7 +223,7 @@ function Arguments({ darkMode, errors, setErrors, inputs, setInputs }) {
                         <IconButton
                             size="small"
                             onClick={() => removeInputArgument(index)}
-                            sx={{ color: 'var(--text-faint)', '&:hover': { color: 'error.main' } }}
+                            sx={{ gridArea: 'del', color: 'var(--text-faint)', '&:hover': { color: 'error.main' } }}
                             aria-label={`Remove argument ${arg.name || index + 1}`}
                         >
                             <DeleteOutlineRoundedIcon sx={{ fontSize: 16 }} />
@@ -245,7 +258,7 @@ function Arguments({ darkMode, errors, setErrors, inputs, setInputs }) {
                 size="small"
                 onClick={addInputArgument}
             >
-                Add input argument {args.length > 0 ? `(${args.length})` : ''}
+                {args.length > 0 ? 'Add another argument' : 'Add input argument'}
             </Button>
         </Box>
     );

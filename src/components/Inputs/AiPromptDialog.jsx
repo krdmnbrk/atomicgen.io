@@ -450,14 +450,14 @@ export default function AiPromptDialog({
             fullWidth
             maxWidth="md"
             fullScreen={isMobile}
-            slotProps={{
-                paper: {
-                    sx: {
-                        borderRadius: isMobile ? 0 : 3,
-                        overflow: 'hidden',
-                        display: 'flex',
-                        flexDirection: 'column',
-                    },
+            sx={!isMobile ? { '& .MuiDialog-container': { alignItems: 'flex-start' } } : undefined}
+            PaperProps={{
+                sx: {
+                    borderRadius: isMobile ? 0 : 3,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    ...(isMobile ? {} : { mt: '20vh', maxHeight: '70vh' }),
                 },
             }}
         >

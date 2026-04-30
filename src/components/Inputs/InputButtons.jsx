@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import yaml from 'js-yaml';
 import Button from '@mui/material/Button';
-import ButtonGroup from '@mui/material/ButtonGroup';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ClickAwayListener from '@mui/material/ClickAwayListener';
 import Grow from '@mui/material/Grow';
@@ -92,41 +91,39 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
 
     return (
         <React.Fragment>
-            <ButtonGroup
-                variant={darkMode ? "outlined" : "contained"}
-                ref={anchorRef}
+            <Box
                 aria-label="Load attack test sample"
                 sx={{
+                    display: 'flex',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    gap: { xs: 1, sm: 1.25 },
+                    alignItems: { xs: 'stretch', sm: 'center' },
                     width: { xs: '100%', sm: 'auto' },
-                    '& > .MuiButton-root': {
-                        flex: { xs: 1, sm: 'initial' },
-                        whiteSpace: 'nowrap',
-                        textTransform: 'none',
-                        fontSize: { xs: 12, sm: 14 },
-                        px: { xs: 1, sm: 2 },
-                    },
                 }}
             >
                 <Button
+                    ref={anchorRef}
+                    variant="outlined"
+                    color="primary"
                     aria-controls={open ? 'split-button-menu' : undefined}
                     aria-expanded={open ? 'true' : undefined}
                     aria-label="load sample"
                     aria-haspopup="menu"
                     onClick={handleToggle}
                     endIcon={<ArrowDropDownIcon />}
+                    sx={{
+                        textTransform: 'none',
+                        fontWeight: 500,
+                        borderRadius: 2,
+                        borderColor: 'var(--glass-stroke-strong)',
+                        '&:hover': {
+                            borderColor: 'primary.main',
+                            background: 'var(--accent-soft)',
+                        },
+                    }}
                 >
                     Load Sample
                 </Button>
-                <UploadButton
-                    base={base}
-                    setInputs={setInputs}
-                    darkMode={darkMode}
-                    setInputButtonErrors={setInputButtonErrors}
-                    inputButtonErrors={inputButtonErrors}
-                    setChanged={setChanged}
-                    changed={changed}
-                    setLoadedSource={setLoadedSource}
-                />
                 <RepoLoaderButton
                     base={base}
                     setInputs={setInputs}
@@ -137,7 +134,17 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
                     changed={changed}
                     setLoadedSource={setLoadedSource}
                 />
-            </ButtonGroup>
+                <UploadButton
+                    base={base}
+                    setInputs={setInputs}
+                    darkMode={darkMode}
+                    setInputButtonErrors={setInputButtonErrors}
+                    inputButtonErrors={inputButtonErrors}
+                    setChanged={setChanged}
+                    changed={changed}
+                    setLoadedSource={setLoadedSource}
+                />
+            </Box>
             {inputButtonErrors.length > 0 &&
                 <Alert sx={{ mt: 1 }} variant={darkMode ? "outlined" : "filled"} severity='error'>
                         {inputButtonErrors.map((error, index) => (
@@ -150,7 +157,7 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
                 open={open}
                 anchorEl={anchorRef.current}
                 role={undefined}
-                placement='bottom-end'
+                placement='bottom-start'
                 transition
             >
                 {({ TransitionProps }) => (

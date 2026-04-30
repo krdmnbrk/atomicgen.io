@@ -1,0 +1,154 @@
+:root {
+  --bg: #07080B;
+  --text: #F0F2F5;
+  --text-muted: #9AA3AE;
+  --text-faint: #5E6772;
+  --accent: #FF5C39;
+  --accent-2: #FF8A66;
+  --accent-soft: rgba(255, 92, 57, 0.15);
+  --glass: rgba(20, 24, 32, 0.55);
+  --glass-strong: rgba(20, 24, 32, 0.78);
+  --glass-modal: rgba(20, 24, 32, 0.78);
+  --glass-stroke: rgba(255, 255, 255, 0.10);
+  --glass-stroke-strong: rgba(255, 255, 255, 0.16);
+  --shadow-modal: 0 0 0 1px rgba(255, 255, 255, 0.10), 0 32px 80px -16px rgba(0, 0, 0, 0.85);
+  --success: #4DDD96;
+  --info: #6FA9FF;
+  --warning: #F5B74E;
+
+  --tactic-initial-access: #6FA9FF;
+  --tactic-execution: #FF5C39;
+  --tactic-persistence: #C28FFF;
+  --tactic-priv-esc: #FFB347;
+  --tactic-defense: #4DDD96;
+  --tactic-credential: #F45C7B;
+  --tactic-discovery: #50D5E0;
+  --tactic-lateral: #B4D85A;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: -2;
+  background:
+    radial-gradient(ellipse 70% 60% at 18% 12%, rgba(99, 65, 175, 0.28), transparent 65%),
+    radial-gradient(ellipse 80% 70% at 86% 90%, rgba(48, 110, 190, 0.22), transparent 65%);
+}
+
+/* Stage — simulates the app behind the modal */
+.stage {
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  opacity: 0.55;
+  z-index: -1;
+}
+.stage::after {
+  content: '';
+  position: absolute;
+  inset: 64px 24px auto 24px;
+  height: 80px;
+  border-radius: 16px;
+  background: var(--glass);
+  border: 1px solid var(--glass-stroke);
+  opacity: 0.4;
+}
+
+.dim {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px) saturate(120%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+  z-index: 1;
+}
+
+/* Modal positioned at 25% from top */
+.modal-shell {
+  position: fixed;
+  top: 25vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(720px, calc(100vw - 32px));
+  z-index: 2;
+}
+
+/* Top label — "Designed at 25% from top" indicator */
+.position-label {
+  position: fixed;
+  top: 8px; left: 50%;
+  transform: translateX(-50%);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-faint);
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  background: rgba(0,0,0,0.5);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px dashed var(--glass-stroke);
+  z-index: 3;
+}
+
+.crumb {
+  position: fixed;
+  top: 8px; right: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-faint);
+  z-index: 3;
+}
+.crumb a { color: var(--accent); text-decoration: none; }
+.crumb a:hover { text-decoration: underline; }
+
+/* Common button */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--glass-strong);
+  color: var(--text);
+  border: 1px solid var(--glass-stroke);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: white;
+  border-color: transparent;
+  font-weight: 600;
+}
+.btn-primary:hover { color: white; opacity: 0.92; }
+
+/* Common kbd */
+kbd {
+  display: inline-block;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--glass-stroke);
+  border-bottom-width: 2px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}

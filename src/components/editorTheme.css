@@ -1,0 +1,161 @@
+/* ───────────────────────────────────────────────────────────────────
+   Ace Editor — Liquid Glass theme override
+   Re-skins both `tomorrow_night_bright` (dark) and `github_light_default`
+   (light) so the syntax-highlighted code panes use the same accent
+   palette as the rest of the app.
+   ─────────────────────────────────────────────────────────────────── */
+
+/* ── shared ───────────────────────────────────────────────────────── */
+.ace_editor {
+  font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace !important;
+  border-radius: 8px;
+}
+
+.ace_editor .ace_gutter {
+  border-right: 1px solid var(--glass-stroke) !important;
+  font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+}
+
+.ace_editor .ace_print-margin {
+  display: none;
+}
+
+/* ── DARK (replaces tomorrow_night_bright) ───────────────────────── */
+.ace-tomorrow-night-bright {
+  background: rgba(0, 0, 0, 0.28) !important;
+  color: #F0F2F5 !important;
+}
+.ace-tomorrow-night-bright .ace_gutter {
+  background: rgba(0, 0, 0, 0.32) !important;
+  color: #5E6772 !important;
+}
+.ace-tomorrow-night-bright .ace_gutter-active-line {
+  background: rgba(255, 92, 57, 0.10) !important;
+  color: #FF8A66 !important;
+}
+.ace-tomorrow-night-bright .ace_marker-layer .ace_active-line {
+  background: rgba(255, 92, 57, 0.06) !important;
+}
+.ace-tomorrow-night-bright .ace_marker-layer .ace_selection {
+  background: rgba(255, 92, 57, 0.22) !important;
+}
+.ace-tomorrow-night-bright .ace_cursor {
+  color: #FF5C39 !important;
+}
+.ace-tomorrow-night-bright .ace_indent-guide {
+  background: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px) right repeat-y;
+  background-size: 1px 2px;
+}
+.ace-tomorrow-night-bright .ace_invisible {
+  color: rgba(255, 255, 255, 0.15) !important;
+}
+/* tokens */
+.ace-tomorrow-night-bright .ace_keyword,
+.ace-tomorrow-night-bright .ace_meta.ace_tag,
+.ace-tomorrow-night-bright .ace_meta.ace_tag.ace_yaml {
+  color: #FF8A66 !important;     /* keys / yaml tags */
+  font-weight: 500;
+}
+.ace-tomorrow-night-bright .ace_string,
+.ace-tomorrow-night-bright .ace_string.ace_unquoted {
+  color: #F5B74E !important;     /* string values — warm warning tone */
+}
+.ace-tomorrow-night-bright .ace_constant.ace_numeric {
+  color: #6FA9FF !important;     /* numbers — info blue */
+}
+.ace-tomorrow-night-bright .ace_constant.ace_language,
+.ace-tomorrow-night-bright .ace_constant.ace_other {
+  color: #C28FFF !important;     /* true / false / null — purple */
+}
+.ace-tomorrow-night-bright .ace_comment {
+  color: #5E6772 !important;
+  font-style: italic;
+}
+.ace-tomorrow-night-bright .ace_punctuation,
+.ace-tomorrow-night-bright .ace_keyword.ace_operator {
+  color: #9AA3AE !important;
+}
+.ace-tomorrow-night-bright .ace_meta,
+.ace-tomorrow-night-bright .ace_paren {
+  color: #9AA3AE !important;
+}
+.ace-tomorrow-night-bright .ace_variable,
+.ace-tomorrow-night-bright .ace_variable.ace_parameter {
+  color: #50D5E0 !important;     /* variables — cyan */
+}
+.ace-tomorrow-night-bright .ace_support.ace_function,
+.ace-tomorrow-night-bright .ace_entity.ace_name.ace_function {
+  color: #4DDD96 !important;     /* functions — success green */
+}
+.ace-tomorrow-night-bright .ace_storage,
+.ace-tomorrow-night-bright .ace_storage.ace_type {
+  color: #FF8A66 !important;
+}
+.ace-tomorrow-night-bright .ace_entity.ace_other.ace_attribute-name {
+  color: #FF8A66 !important;
+}
+.ace-tomorrow-night-bright .ace_invalid {
+  color: #fff !important;
+  background: rgba(229, 72, 77, 0.4) !important;
+}
+
+/* ── LIGHT (replaces github_light_default) ───────────────────────── */
+.ace-github-light-default {
+  background: rgba(255, 255, 255, 0.55) !important;
+  color: #14161A !important;
+}
+.ace-github-light-default .ace_gutter {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: #8A929E !important;
+}
+.ace-github-light-default .ace_gutter-active-line {
+  background: rgba(224, 74, 30, 0.08) !important;
+  color: #C13C12 !important;
+}
+.ace-github-light-default .ace_marker-layer .ace_active-line {
+  background: rgba(224, 74, 30, 0.05) !important;
+}
+.ace-github-light-default .ace_marker-layer .ace_selection {
+  background: rgba(224, 74, 30, 0.18) !important;
+}
+.ace-github-light-default .ace_cursor {
+  color: #E04A1E !important;
+}
+.ace-github-light-default .ace_keyword,
+.ace-github-light-default .ace_meta.ace_tag,
+.ace-github-light-default .ace_meta.ace_tag.ace_yaml {
+  color: #C13C12 !important;
+  font-weight: 500;
+}
+.ace-github-light-default .ace_string,
+.ace-github-light-default .ace_string.ace_unquoted {
+  color: #C28419 !important;
+}
+.ace-github-light-default .ace_constant.ace_numeric {
+  color: #2A6FCC !important;
+}
+.ace-github-light-default .ace_constant.ace_language {
+  color: #8B5CF6 !important;
+}
+.ace-github-light-default .ace_comment {
+  color: #8A929E !important;
+  font-style: italic;
+}
+.ace-github-light-default .ace_punctuation,
+.ace-github-light-default .ace_keyword.ace_operator,
+.ace-github-light-default .ace_meta,
+.ace-github-light-default .ace_paren {
+  color: #56606C !important;
+}
+.ace-github-light-default .ace_variable,
+.ace-github-light-default .ace_variable.ace_parameter {
+  color: #0A8E9E !important;
+}
+.ace-github-light-default .ace_support.ace_function,
+.ace-github-light-default .ace_entity.ace_name.ace_function {
+  color: #1F9D67 !important;
+}
+.ace-github-light-default .ace_invalid {
+  color: #fff !important;
+  background: rgba(198, 56, 66, 0.45) !important;
+}

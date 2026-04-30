@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Inputs from './components/Inputs';
 import YamlContent from './components/YamlContent';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import GlobalStyles from '@mui/material/GlobalStyles';
@@ -489,6 +490,35 @@ function App() {
         'code, pre, .mono': {
           fontFamily: "'JetBrains Mono', ui-monospace, monospace",
         },
+        // Visually-hidden skip-link surface
+        '.skip-link': {
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          padding: '8px 14px',
+          background: theme.palette.primary.main,
+          color: '#fff',
+          fontSize: 13,
+          fontWeight: 600,
+          borderRadius: 6,
+          margin: 8,
+          textDecoration: 'none',
+          transform: 'translateY(-150%)',
+          transition: 'transform 0.18s',
+          zIndex: 9999,
+        },
+        '.skip-link:focus': {
+          transform: 'translateY(0)',
+          outline: '2px solid #fff',
+        },
+        '@media (prefers-reduced-motion: reduce)': {
+          '*, *::before, *::after': {
+            animationDuration: '0.001ms !important',
+            animationIterationCount: '1 !important',
+            transitionDuration: '0.001ms !important',
+            scrollBehavior: 'auto !important',
+          },
+        },
       })}
     />
   );
@@ -498,8 +528,9 @@ function App() {
       <CssBaseline />
       {globalStyles}
       <ConfirmProvider>
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       <Navbar darkMode={darkMode} setDarkMode={setDarkMode} />
-      <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 1500, mx: 'auto' }}>
+      <Box id="main-content" component="main" sx={{ p: { xs: 2, md: 3 }, maxWidth: 1500, mx: 'auto' }}>
         <Grid container spacing={{ xs: 2, md: 3 }}>
           <Grid size={isPortrait ? 12 : 6}>
             <Inputs
@@ -582,6 +613,8 @@ function App() {
           Form reset.
         </Alert>
       </Snackbar>
+
+      <Footer />
       </ConfirmProvider>
     </ThemeProvider>
   );
