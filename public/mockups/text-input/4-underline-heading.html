@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Text input — 04 Underline + heading</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css" />
+<style>
+  .doc-field {
+    display: flex; flex-direction: column; gap: 4px;
+    padding-bottom: 4px;
+  }
+  .doc-label {
+    font-size: 15.5px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.005em;
+  }
+  .doc-label .req { color: var(--error); }
+  .doc-sublabel {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .doc-input,
+  .doc-textarea {
+    width: 100%;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--glass-stroke);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    padding: 6px 2px 8px;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .doc-textarea {
+    min-height: 84px;
+    resize: vertical;
+    line-height: 1.6;
+    border: 1px solid var(--glass-stroke);
+    border-radius: 0;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.015);
+  }
+  .doc-input:hover,
+  .doc-textarea:hover { border-color: var(--glass-stroke-strong); }
+  .doc-input:focus,
+  .doc-textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 1px 0 0 var(--accent);
+  }
+  .doc-textarea:focus { box-shadow: 0 0 0 1px var(--accent); }
+  .doc-input::placeholder,
+  .doc-textarea::placeholder { color: var(--text-faint); }
+  .helper { font-size: 11.5px; color: var(--text-faint); margin-top: 4px; }
+  .section { gap: 22px; }
+</style>
+</head>
+<body>
+  <main class="page">
+    <div class="nav">
+      <a href="index.html">← Designs</a>
+      <a href="1-stacked.html">01 Stacked</a>
+      <a href="2-floating-inside.html">02 Inside-Float</a>
+      <a href="3-chip-label.html">03 Chip</a>
+      <a class="active" href="4-underline-heading.html">04 Underline</a>
+      <a href="5-inline-prefix.html">05 Inline Key</a>
+    </div>
+
+    <header class="page-head">
+      <div class="eyebrow">Design 04 / Heading + underline</div>
+      <h1>Form değil, doküman gibi</h1>
+      <p>Label artık küçük bir input başlığı değil, gerçek bir başlık. Input alttaki ince çizgi. Notion / Apple Notes hissi — alan zayıf, içerik baskın.</p>
+    </header>
+
+    <div class="section-title">Identity</div>
+    <div class="section">
+      <div class="doc-field">
+        <div class="doc-label">ATT&CK technique <span class="req">*</span></div>
+        <div class="doc-sublabel">Resmi MITRE ID'si — alt-teknik dahil.</div>
+        <input class="doc-input mono" type="text" value="T1059.001" />
+      </div>
+      <div class="doc-field">
+        <div class="doc-label">Technique display name</div>
+        <div class="doc-sublabel">Kullanıcının göreceği insan dilinde isim.</div>
+        <input class="doc-input" type="text" value="PowerShell" />
+      </div>
+    </div>
+
+    <div class="section-title">Atomic test</div>
+    <div class="section">
+      <div class="doc-field">
+        <div class="doc-label">Test name <span class="req">*</span></div>
+        <input class="doc-input" type="text" placeholder="Short, action-oriented title" />
+      </div>
+      <div class="doc-field">
+        <div class="doc-label">Test description <span class="req">*</span></div>
+        <div class="doc-sublabel">Saldırgan ne yapıyor, ne iz bırakıyor, savunmacı nasıl doğrular?</div>
+        <textarea class="doc-textarea" placeholder="What does this test do? What artifact is left behind? How can a defender verify it ran?"></textarea>
+        <div class="helper">Markdown desteklenir.</div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>Hissiyat:</strong> "Form doldurmak"tan çok "yazmak" hissi. Label hiyerarşinin parçası, alan görünmez. Sub-label'lar (Notion-vari) kullanıcıyı yönlendiriyor. Boşken bile sayfa boş hissetmiyor — başlıklar dolu.
+    </div>
+  </main>
+</body>
+</html>

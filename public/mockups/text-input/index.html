@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Text input — 5 designs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css" />
+<style>
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+    margin-top: 8px;
+  }
+  .card {
+    display: flex; flex-direction: column;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid var(--glass-stroke);
+    background: var(--glass);
+    border-radius: 14px;
+    padding: 16px 16px 14px;
+    transition: border-color .15s, transform .15s, background .15s;
+  }
+  .card:hover {
+    border-color: var(--accent-ring);
+    background: rgba(255, 92, 57, 0.04);
+    transform: translateY(-1px);
+  }
+  .card .num {
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .card h3 {
+    margin: 4px 0 6px;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  .card p {
+    margin: 0 0 14px;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  .preview {
+    margin-top: auto;
+    background: rgba(15, 18, 24, 0.65);
+    border: 1px solid var(--glass-stroke);
+    border-radius: 10px;
+    padding: 14px;
+    min-height: 78px;
+    display: flex; align-items: center;
+  }
+  /* Mini previews (one per design) */
+  .p1 .lbl { font-size: 10.5px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .p1 .box { height: 28px; border: 1px solid var(--glass-stroke); border-radius: 8px; background: rgba(15,18,24,0.65); }
+  .p2 { width: 100%; }
+  .p2 .wrap { position: relative; height: 50px; border: 1px solid var(--glass-stroke); border-radius: 10px; background: rgba(15,18,24,0.65); padding: 14px 12px 6px; }
+  .p2 .wrap span { position: absolute; top: 4px; left: 12px; font-size: 9px; font-weight: 600; color: var(--accent-2); text-transform: uppercase; letter-spacing: .08em; }
+  .p2 .val { font-size: 12px; color: var(--text); font-family: 'JetBrains Mono', monospace; }
+  .p3 { width: 100%; position: relative; padding-top: 8px; }
+  .p3 .chip { position: absolute; top: -2px; left: 12px; padding: 2px 8px; background: var(--bg); border: 1px solid var(--glass-stroke-strong); border-radius: 999px; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); font-weight: 600; }
+  .p3 .box { height: 36px; border: 1px solid var(--glass-stroke); border-radius: 10px; background: rgba(15,18,24,0.65); }
+  .p4 { width: 100%; }
+  .p4 .h { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .p4 .sub { font-size: 10px; color: var(--text-muted); margin-bottom: 4px; }
+  .p4 .underline { height: 1px; background: var(--glass-stroke-strong); }
+  .p5 { width: 100%; display: grid; grid-template-columns: 90px 1fr; border: 1px solid var(--glass-stroke); border-radius: 10px; overflow: hidden; background: rgba(15,18,24,0.65); }
+  .p5 .k { padding: 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); border-right: 1px solid var(--glass-stroke); background: rgba(255,255,255,0.025); }
+  .p5 .v { padding: 10px; font-size: 12px; color: var(--text); }
+</style>
+</head>
+<body>
+  <main class="page">
+    <header class="page-head">
+      <div class="eyebrow">Mockups · text input + label</div>
+      <h1>Label & textbox tasarımları</h1>
+      <p>Mevcut MUI outlined notched-label'a alternatif olarak 5 farklı yön. Her biri "Test description" gibi alanların hissini değiştiriyor. Tıkla, gerçek input ile dene.</p>
+    </header>
+
+    <div class="grid">
+      <a class="card" href="1-stacked.html">
+        <div class="num">01 / Stacked</div>
+        <h3>Üstte sade label</h3>
+        <p>Klasik. Label başlık gibi yukarıda, alan altında temiz kutu. Linear, Vercel, Stripe.</p>
+        <div class="preview p1">
+          <div style="width:100%">
+            <div class="lbl">Test description *</div>
+            <div class="box"></div>
+          </div>
+        </div>
+      </a>
+
+      <a class="card" href="2-floating-inside.html">
+        <div class="num">02 / Inside-Float</div>
+        <h3>İçeride yüzen label</h3>
+        <p>Boşken büyük, dolunca üst içe küçülüyor. Border kesilmiyor, çentik yok.</p>
+        <div class="preview p2">
+          <div class="wrap">
+            <span>Test description *</span>
+            <div class="val">Run encoded PowerShell…</div>
+          </div>
+        </div>
+      </a>
+
+      <a class="card" href="3-chip-label.html">
+        <div class="num">03 / Chip</div>
+        <h3>Pill-rozet label</h3>
+        <p>Notch yerine kutuya iliştirilmiş küçük bir pill. Focus'ta accent gradient.</p>
+        <div class="preview p3">
+          <span class="chip">Test description *</span>
+          <div class="box" style="width:100%"></div>
+        </div>
+      </a>
+
+      <a class="card" href="4-underline-heading.html">
+        <div class="num">04 / Underline</div>
+        <h3>Başlık + alt çizgi</h3>
+        <p>Form değil doküman hissi. Label gerçek başlık, alan ince bir çizgi.</p>
+        <div class="preview p4">
+          <div style="width:100%">
+            <div class="h">Test description *</div>
+            <div class="sub">Saldırgan ne yapıyor, ne iz bırakıyor?</div>
+            <div class="underline"></div>
+          </div>
+        </div>
+      </a>
+
+      <a class="card" href="5-inline-prefix.html">
+        <div class="num">05 / Inline Key</div>
+        <h3>YAML key: value</h3>
+        <p>Label solda mono fontla, sağda input. Üretilen YAML ile tipografik bağ.</p>
+        <div class="preview">
+          <div class="p5">
+            <div class="k">description*</div>
+            <div class="v">Run encoded PowerShell…</div>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <div class="note" style="margin-top: 36px;">
+      <strong>Nasıl seçeyim:</strong>
+      en güvenli ve diğer formlarla en uyumlusu <strong>01</strong>;
+      mevcut hisse en yakın ama notch'sız hali <strong>02</strong>;
+      karaktere meyilli, dikkat çekici <strong>03</strong>;
+      "yazma odaklı" doküman tonu <strong>04</strong>;
+      teknik kullanıcı, YAML-merkezli his için <strong>05</strong>.
+      Hangisini seçtiğini söyle, gerçek koda port edeyim.
+    </div>
+  </main>
+</body>
+</html>
