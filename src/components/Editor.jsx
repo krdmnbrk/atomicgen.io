@@ -9,6 +9,9 @@ import 'ace-builds/src-noconflict/mode-yaml';
 // Importing the theme for the Ace Editor
 import 'ace-builds/src-noconflict/theme-tomorrow_night_bright';
 import 'ace-builds/src-noconflict/theme-github_light_default';
+// Liquid Glass overrides — must be imported AFTER the base themes so the
+// !important rules override Ace's own .ace-tomorrow-night-bright / etc.
+import './editorTheme.css';
 
 // Editor component definition
 const Editor = ({

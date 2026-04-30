@@ -103,7 +103,7 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
                 }}
             >
                 <Button
-                    variant="contained"
+                    variant="outlined"
                     color="primary"
                     aria-controls={open ? 'split-button-menu' : undefined}
                     aria-expanded={open ? 'true' : undefined}
@@ -113,11 +113,12 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
                     endIcon={<ArrowDropDownIcon />}
                     sx={{
                         textTransform: 'none',
-                        fontWeight: 600,
+                        fontWeight: 500,
                         borderRadius: 2,
-                        boxShadow: '0 8px 22px -8px var(--accent), inset 0 1px 0 rgba(255,255,255,0.25)',
+                        borderColor: 'var(--glass-stroke-strong)',
                         '&:hover': {
-                            boxShadow: '0 12px 28px -10px var(--accent), inset 0 1px 0 rgba(255,255,255,0.25)',
+                            borderColor: 'primary.main',
+                            background: 'var(--accent-soft)',
                         },
                     }}
                 >
