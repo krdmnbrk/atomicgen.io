@@ -92,7 +92,6 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
     return (
         <React.Fragment>
             <Box
-                ref={anchorRef}
                 aria-label="Load attack test sample"
                 sx={{
                     display: 'flex',
@@ -103,6 +102,7 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
                 }}
             >
                 <Button
+                    ref={anchorRef}
                     variant="outlined"
                     color="primary"
                     aria-controls={open ? 'split-button-menu' : undefined}
@@ -157,7 +157,7 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
                 open={open}
                 anchorEl={anchorRef.current}
                 role={undefined}
-                placement='bottom-end'
+                placement='bottom-start'
                 transition
             >
                 {({ TransitionProps }) => (
