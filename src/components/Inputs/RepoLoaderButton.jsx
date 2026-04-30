@@ -59,13 +59,6 @@ export default function RepoLoaderButton({
     const { data, loading: indexLoading, error } = useAtomicIndex();
     const confirm = useConfirm();
 
-    React.useEffect(() => {
-        if (error) {
-            const detail = error.message || 'Unknown error';
-            setInputButtonErrors([`Failed to load technique index — ${detail}`]);
-        }
-    }, [error, setInputButtonErrors]);
-
     // Group tests by tactic → technique → count. Also keep per-technique
     // test-name list so search can match atomic-test names, not just TIDs.
     const tacticGroups = React.useMemo(() => {
