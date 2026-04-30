@@ -208,18 +208,29 @@ function Inputs({
     const techniqueTests = atIndex?.tests || [];
     const handleTechniqueChange = (_event, value) => {
         if (value && value.id) {
-            // From picker (index match or custom TID). display_name field
-            // is no longer user-editable, so always derive it: prefer the
-            // technique's name, fall back to the TID itself for custom TIDs.
+            // From picker (index match or custom TID). When the picker provides
+            // a name (index match), use it; for custom TIDs the picker passes
+            // name=null and we leave display_name blank so the user enters the
+            // canonical MITRE name themselves via the conditional field below.
             setInputs((prev) => ({
                 ...prev,
                 attack_technique: value.id,
-                display_name: value.name || value.id,
+                display_name: value.name || null,
             }));
         } else {
             setInputs((prev) => ({ ...prev, attack_technique: null, display_name: null }));
         }
     };
+
+    // True when the user picked a TID that the atomic-red-team index doesn't
+    // know about (either a custom T#### or the index failed to load and we
+    // can't validate). In that case we surface a Display name field so the
+    // user can supply the canonical MITRE name; otherwise display_name is
+    // auto-filled from the index and the field is hidden.
+    const isCustomTechnique = Boolean(
+        inputs.attack_technique &&
+            !techniqueOptions.some((o) => o.id === inputs.attack_technique)
+    );
 
     const lifecycleHasContent =
         Boolean(inputs.executor?.cleanup_command) ||
@@ -370,6 +381,31 @@ function Inputs({
                         required
                     />
                 </Box>
+                {/* Custom TID — surface display_name so the user can supply
+                    the canonical MITRE name. Hidden when the chosen TID is in
+                    the atomic-red-team index (display_name auto-filled). */}
+                {isCustomTechnique && (
+                    <Box sx={{ mb: 2 }}>
+                        <TextField
+                            required
+                            spellCheck="false"
+                            fullWidth
+                            variant="filled"
+                            size="small"
+                            label="Technique display name"
+                            placeholder="e.g. Scheduled Task/Job: Scheduled Task"
+                            id="display_name"
+                            name="display_name"
+                            value={inputs.display_name || ''}
+                            onChange={handleChangeText}
+                            helperText={`Custom TID (${inputs.attack_technique}) — enter the canonical MITRE technique name.`}
+                            FormHelperTextProps={{
+                                sx: { ml: 0, fontSize: 11, color: 'var(--text-faint)' },
+                            }}
+                            sx={inputSx}
+                        />
+                    </Box>
+                )}
                 <Box sx={{ mb: 2 }}>
                     <TextField
                         required
