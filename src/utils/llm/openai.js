@@ -1,5 +1,14 @@
 import { TOOL_NAME, TOOL_DESCRIPTION, TOOL_INPUT_SCHEMA } from './toolSchema';
 
+// Per-model output-token cap. gpt-4o family supports 16384, but legacy
+// gpt-4-turbo is capped at 4096 by the API and will 400 if exceeded.
+const MAX_TOKENS_BY_MODEL = {
+    'gpt-4o': 16384,
+    'gpt-4o-mini': 16384,
+    'gpt-4-turbo': 4096,
+};
+const DEFAULT_MAX_TOKENS = 16384;
+
 export const openaiProvider = {
     id: 'openai',
     name: 'OpenAI',
@@ -20,8 +29,12 @@ export const openaiProvider = {
             ? `${systemPrompt}\n\n${indexBlock}`
             : systemPrompt;
 
+        const effectiveModel = model || this.defaultModel;
         const body = {
-            model: model || this.defaultModel,
+            model: effectiveModel,
+            // 16384 by default; clamped per-model where the API enforces
+            // a smaller cap (gpt-4-turbo → 4096). See MAX_TOKENS_BY_MODEL.
+            max_tokens: MAX_TOKENS_BY_MODEL[effectiveModel] || DEFAULT_MAX_TOKENS,
             messages: [
                 { role: 'system', content: fullSystem },
                 { role: 'user', content: userPrompt },
@@ -70,10 +83,18 @@ export const openaiProvider = {
         if (!toolCall || !toolCall.function?.arguments) {
             throw new Error('Provider returned no tool call. Try rephrasing your request.');
         }
+        // Truncation guard — see anthropic.js for context.
+        if (choice.finish_reason === 'length') {
+            throw new Error(
+                'Response was truncated — the model hit its output-token limit before finishing. Try a shorter or more specific prompt, or refine in smaller steps.'
+            );
+        }
         try {
             return JSON.parse(toolCall.function.arguments);
         } catch (e) {
-            throw new Error('Provider returned malformed JSON.');
+            // Malformed JSON is the usual symptom of a truncated tool-call
+            // even when finish_reason is missing in some gateway responses.
+            throw new Error('Response was truncated or malformed. Try a shorter prompt or retry.');
         }
     },
 };
