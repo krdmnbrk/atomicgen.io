@@ -204,6 +204,9 @@ export default function AiPromptDialog({
     const [lastSubmittedPrompt, setLastSubmittedPrompt] = React.useState('');
     const [busy, setBusy] = React.useState(false);
     const [busyMode, setBusyMode] = React.useState(null); // 'generate' | 'refine'
+    // 0 = first attempt, 1+ = retry number (after a refusal). Used for the
+    // "Retrying (n/2)…" UI hint while the auto-retry loop runs.
+    const [retryAttempt, setRetryAttempt] = React.useState(0);
     const [error, setError] = React.useState(null);
     const [networkBlocked, setNetworkBlocked] = React.useState(null);
     const [refusal, setRefusal] = React.useState(null);
@@ -214,6 +217,12 @@ export default function AiPromptDialog({
     const [refineOpen, setRefineOpen] = React.useState(false);
     const [refineText, setRefineText] = React.useState('');
     const abortRef = React.useRef(null);
+
+    // Refs for auto-scrolling the YAML preview to the active variant when the
+    // user picks a platform tab. scrollRef is the overflow-auto body; testRefs
+    // is one ref per atomic_tests block.
+    const scrollRef = React.useRef(null);
+    const testRefs = React.useRef([]);
     const isMobile = useMediaQuery('(max-width: 600px)');
     const confirm = useConfirm();
 
@@ -253,22 +262,46 @@ export default function AiPromptDialog({
 
         setBusy(true);
         setBusyMode(mode);
+        setRetryAttempt(0);
         const ctrl = new AbortController();
         abortRef.current = ctrl;
         try {
             const indexBlock = buildTechniqueIndexBlock(techniques);
-            const payload = await settings.provider.generate({
-                apiKey: settings.apiKey,
-                model: settings.model,
-                systemPrompt: SYSTEM_PROMPT,
-                indexBlock,
-                userPrompt: wrappedPrompt,
-                signal: ctrl.signal,
-            });
-            if (payload?.action === 'refuse') {
-                setRefusal(payload.reason || 'Request was declined.');
-                return;
+
+            // Auto-retry on refusal: model behavior is stochastic, and OpenAI
+            // in particular sometimes refuses broad/colloquial requests that
+            // Anthropic happily maps to a technique. Try up to 3 attempts in
+            // total (1 + 2 retries); on each retry append a nudge that quotes
+            // the prior refusal reason and reminds the model that broadness
+            // is not a valid refusal cause.
+            const MAX_ATTEMPTS = 3;
+            let payload = null;
+            let lastRefusal = null;
+            for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+                setRetryAttempt(attempt - 1);
+                const promptForAttempt = attempt === 1
+                    ? wrappedPrompt
+                    : `${wrappedPrompt}\n\n[Auto-retry ${attempt - 1}/${MAX_ATTEMPTS - 1}: a previous attempt was refused with reason: "${lastRefusal}". Per system instructions, broadness/colloquial phrasing is NOT a valid refusal reason. Map the request to the closest ATT&CK technique and accept.]`;
+                const candidate = await settings.provider.generate({
+                    apiKey: settings.apiKey,
+                    model: settings.model,
+                    systemPrompt: SYSTEM_PROMPT,
+                    indexBlock,
+                    userPrompt: promptForAttempt,
+                    signal: ctrl.signal,
+                });
+                if (candidate?.action === 'refuse') {
+                    lastRefusal = candidate.reason || 'Request was declined.';
+                    if (attempt === MAX_ATTEMPTS) {
+                        setRefusal(`Model refused after ${MAX_ATTEMPTS} attempts. Last reason: ${lastRefusal}`);
+                        return;
+                    }
+                    continue;
+                }
+                payload = candidate;
+                break;
             }
+
             if (payload?.action !== 'generate' || !payload.test_data) {
                 setError('Unexpected response. Try rephrasing your request.');
                 return;
@@ -306,6 +339,7 @@ export default function AiPromptDialog({
         } finally {
             setBusy(false);
             setBusyMode(null);
+            setRetryAttempt(0);
             abortRef.current = null;
         }
     };
@@ -359,6 +393,26 @@ export default function AiPromptDialog({
 
     const tests = Array.isArray(result?.atomic_tests) ? result.atomic_tests : [];
     const activeTest = tests[activeIdx];
+
+    // Auto-scroll the YAML preview to the active variant when the user picks
+    // a platform tab. Skipped for single-variant results (nothing to navigate)
+    // and during refine since the preview is dimmed.
+    React.useEffect(() => {
+        if (!result || tests.length <= 1) return;
+        if (busy && busyMode === 'refine') return;
+        const container = scrollRef.current;
+        const target = testRefs.current[activeIdx];
+        if (!container || !target) return;
+        // Defer until after layout so refs/positions are settled (refine swaps
+        // the YAML in-place which can briefly invalidate offsets).
+        const id = requestAnimationFrame(() => {
+            const cRect = container.getBoundingClientRect();
+            const tRect = target.getBoundingClientRect();
+            const next = container.scrollTop + (tRect.top - cRect.top) - 16;
+            container.scrollTo({ top: Math.max(0, next), behavior: 'smooth' });
+        });
+        return () => cancelAnimationFrame(id);
+    }, [activeIdx, tests.length, result, busy, busyMode]);
     const activeTestValidation = validation?.perTest?.[activeIdx];
     const topLevelErrors = validation?.errors || [];
     const topLevelWarnings = validation?.warnings || [];
@@ -964,7 +1018,7 @@ export default function AiPromptDialog({
             )}
 
             {/* ─── Body (alerts, busy, YAML) ─── */}
-            <Box sx={{ flex: 1, overflow: 'auto', background: result ? 'rgba(0, 0, 0, 0.18)' : 'transparent' }}>
+            <Box ref={scrollRef} sx={{ flex: 1, overflow: 'auto', background: result ? 'rgba(0, 0, 0, 0.18)' : 'transparent' }}>
                 {/* Alerts */}
                 {(error || networkBlocked || refusal || (validation && (topLevelErrors.length > 0 || topLevelWarnings.length > 0)) || (busy && !result)) && (
                     <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1.25 }}>
@@ -1064,7 +1118,9 @@ export default function AiPromptDialog({
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
                                 <CircularProgress size={18} />
                                 <Typography variant="body2" color="text.secondary">
-                                    Generating…
+                                    {retryAttempt > 0
+                                        ? `Retrying (${retryAttempt}/2) — model refused, nudging…`
+                                        : 'Generating…'}
                                 </Typography>
                             </Box>
                         )}
@@ -1099,6 +1155,7 @@ export default function AiPromptDialog({
                                     return (
                                         <Box
                                             key={i}
+                                            ref={(el) => { testRefs.current[i] = el; }}
                                             component="span"
                                             sx={(theme) => ({
                                                 display: 'block',
@@ -1146,7 +1203,9 @@ export default function AiPromptDialog({
                                 }}
                             >
                                 <CircularProgress size={18} />
-                                Refining…
+                                {retryAttempt > 0
+                                    ? `Retrying (${retryAttempt}/2) — model refused, nudging…`
+                                    : 'Refining…'}
                             </Box>
                         )}
                     </Box>
