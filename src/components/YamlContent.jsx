@@ -14,6 +14,7 @@ import RadarRoundedIcon from '@mui/icons-material/RadarRounded';
 import CallSplitRoundedIcon from '@mui/icons-material/CallSplitRounded';
 import IosShareRoundedIcon from '@mui/icons-material/IosShareRounded';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
+import BookmarkAddRoundedIcon from '@mui/icons-material/BookmarkAddRounded';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Editor from './Editor';
@@ -23,6 +24,7 @@ import ContributeModal from './ContributeModal';
 import HowToRun from './HowToRun';
 import DiffViewer from './DiffViewer';
 import VariantSuggestModal from './VariantSuggestModal';
+import useLocalLibrary from '../hooks/useLocalLibrary';
 import useLintFindings from '../hooks/useLintFindings';
 import { summarizeFindings } from '../utils/atLinter';
 import { inputsToYaml } from '../utils/atomicYaml';
@@ -40,7 +42,7 @@ const downloadStringAsFile = (filename, content) => {
   URL.revokeObjectURL(url);
 };
 
-function YamlContent({ darkMode, inputs, setInputs, setLoadedSource, updated, base, validationErrors, setChanged, changed, onReset, originalSnapshot, originalGuid }) {
+function YamlContent({ darkMode, inputs, setInputs, setLoadedSource, loadedSource, updated, base, validationErrors, setChanged, changed, onReset, originalSnapshot, originalGuid }) {
   const [formatted_yaml, setFormattedYaml] = React.useState(null);
   const [showContent, setShowContent] = React.useState(false);
   const [showLintPanel, setShowLintPanel] = React.useState(false);
@@ -120,6 +122,16 @@ function YamlContent({ darkMode, inputs, setInputs, setLoadedSource, updated, ba
     } catch {
       /* noop */
     }
+  };
+
+  // One-click save to local library — uses inputs.name (or auto-name on
+  // empty), shows a 2s checkmark, no drawer flash.
+  const { save: saveToLibrary } = useLocalLibrary();
+  const [savedToLib, setSavedToLib] = React.useState(false);
+  const saveCurrentToLibrary = () => {
+    saveToLibrary(inputs.name || '', inputs);
+    setSavedToLib(true);
+    setTimeout(() => setSavedToLib(false), 2000);
   };
   const invokeAtomicSnippet = (() => {
     const tid = (inputs.attack_technique || '').trim();
@@ -314,14 +326,18 @@ function YamlContent({ darkMode, inputs, setInputs, setLoadedSource, updated, ba
         </Box>
         <Box sx={{ display: 'flex', gap: 0.5 }}>
           {(() => {
+            // Only block contribution when the test was loaded verbatim from
+            // the AT repo and hasn't been edited. AI / sample / upload /
+            // library / shared / draft loads are user-authored intent.
             const unchangedFromOriginal =
+              loadedSource && loadedSource.type === 'repo' &&
               !!originalSnapshot && formatted_yaml === originalSnapshot;
             const tooltip = !showContent
               ? 'Author a test first, then contribute'
               : !inputs.attack_technique
               ? 'Set an ATT&CK technique to enable contribute flow'
               : unchangedFromOriginal
-              ? 'No changes vs the loaded test — edit something before contributing'
+              ? 'No changes vs the loaded atomic-red-team test — edit something before contributing'
               : 'Contribute this test to atomic-red-team (open pre-filled fork on GitHub)';
             return (
               <Tooltip title={tooltip}>
@@ -407,6 +423,22 @@ function YamlContent({ darkMode, inputs, setInputs, setLoadedSource, updated, ba
                   <CheckRoundedIcon sx={{ fontSize: 16, color: 'success.main' }} />
                 ) : (
                   <TerminalRoundedIcon sx={{ fontSize: 16 }} />
+                )}
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title={savedToLib ? 'Saved to library!' : 'Save current test to My Tests library'}>
+            <span>
+              <IconButton
+                disabled={!showContent}
+                onClick={saveCurrentToLibrary}
+                sx={iconBtnSx}
+                aria-label="Save to My Tests library"
+              >
+                {savedToLib ? (
+                  <CheckRoundedIcon sx={{ fontSize: 16, color: 'success.main' }} />
+                ) : (
+                  <BookmarkAddRoundedIcon sx={{ fontSize: 16 }} />
                 )}
               </IconButton>
             </span>
