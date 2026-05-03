@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import LaunchIcon from '@mui/icons-material/Launch';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import LibraryBooksRoundedIcon from '@mui/icons-material/LibraryBooksRounded';
 import Tooltip from '@mui/material/Tooltip';
 import {
   GitHub as GitHubIcon,
@@ -20,7 +21,7 @@ import {
   DarkModeOutlined as DarkModeOutlinedIcon,
 } from '@mui/icons-material';
 
-function Navbar({ darkMode, setDarkMode }) {
+function Navbar({ darkMode, setDarkMode, onOpenLibrary }) {
   const [anchorEl, setAnchorEl] = useState(null);
 
   const usefulLinks = [
@@ -220,6 +221,22 @@ function Navbar({ darkMode, setDarkMode }) {
               </MenuItem>
             ))}
           </Menu>
+
+          {onOpenLibrary && (
+            <Tooltip title="My Tests library — saved drafts in your browser" placement="bottom">
+              <IconButton
+                onClick={onOpenLibrary}
+                color="inherit"
+                aria-label="Open My Tests library"
+                sx={{
+                  borderRadius: 2.5,
+                  '&:hover': { background: 'var(--glass-strong)' },
+                }}
+              >
+                <LibraryBooksRoundedIcon fontSize="medium" />
+              </IconButton>
+            </Tooltip>
+          )}
 
           <IconButton
             component="a"

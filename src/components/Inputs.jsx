@@ -330,6 +330,12 @@ function Inputs({
                             Loaded from shared link
                         </>
                     )}
+                    {loadedSource.type === 'library' && (
+                        <>
+                            <Box component="span" sx={{ opacity: 0.7 }}>📚</Box>
+                            Loaded from My Tests library
+                        </>
+                    )}
                     {changed && (
                         <Box
                             component="span"

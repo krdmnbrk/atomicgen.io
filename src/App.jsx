@@ -11,6 +11,7 @@ import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import { ConfirmProvider } from './components/ConfirmDialog';
+import MyTestsLibrary from './components/MyTestsLibrary';
 import { inputsToYaml } from './utils/atomicYaml';
 import { decodeStateFromHash, clearShareHash } from './utils/shareUrl';
 
@@ -152,6 +153,12 @@ function App() {
   // Share-via-URL pending state
   const [shareRestoreOpen, setShareRestoreOpen] = useState(false);
   const [pendingShare, setPendingShare] = useState(null);
+  // My Tests library drawer
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const loadFromLibrary = (libInputs) => {
+    setInputs(libInputs);
+    setLoadedSource({ type: 'library' });
+  };
   // Reset undo (10s window)
   const [undoSnack, setUndoSnack] = useState({ open: false, snapshot: null });
   const undoTimerRef = useRef(null);
@@ -573,7 +580,11 @@ function App() {
       {globalStyles}
       <ConfirmProvider>
       <a href="#main-content" className="skip-link">Skip to main content</a>
-      <Navbar darkMode={darkMode} setDarkMode={setDarkMode} />
+      <Navbar
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        onOpenLibrary={() => setLibraryOpen(true)}
+      />
       <Box id="main-content" component="main" sx={{ p: { xs: 2, md: 3 }, maxWidth: 1500, mx: 'auto' }}>
         <Grid container spacing={{ xs: 2, md: 3 }}>
           <Grid size={isPortrait ? 12 : 6}>
@@ -683,6 +694,14 @@ function App() {
           Form reset.
         </Alert>
       </Snackbar>
+
+      <MyTestsLibrary
+        open={libraryOpen}
+        onClose={() => setLibraryOpen(false)}
+        currentInputs={inputs}
+        onLoad={loadFromLibrary}
+        formIsModified={changed}
+      />
 
       </ConfirmProvider>
     </ThemeProvider>
