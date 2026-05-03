@@ -93,5 +93,40 @@ export default function useLocalLibrary() {
         });
     }, []);
 
-    return { items, save, remove, rename };
+    // Bulk import — used by the library export/import flow. Returns a
+    // summary so the caller can show user feedback. Reads fresh from
+    // localStorage to avoid setState batching races.
+    //   mode: 'merge'   (default) — additive; entries whose id already
+    //                                exists locally are skipped
+    //         'replace'           — wipes existing library and replaces
+    //                                with imported items
+    const importItems = useCallback((rawItems, mode = 'merge') => {
+        const current = read();
+        const valid = (rawItems || []).filter(
+            (x) => x && typeof x === 'object' && x.id && x.name && x.inputs
+        );
+        let next;
+        let added = 0;
+        if (mode === 'replace') {
+            next = valid;
+            added = valid.length;
+        } else {
+            const existingIds = new Set(current.map((x) => x.id));
+            const additions = valid.filter((x) => !existingIds.has(x.id));
+            added = additions.length;
+            next = [...additions, ...current];
+        }
+        write(next);
+        setItems(next);
+        notify();
+        const total = Array.isArray(rawItems) ? rawItems.length : 0;
+        return {
+            added,
+            skipped: total - added,
+            invalid: total - valid.length,
+            total,
+        };
+    }, []);
+
+    return { items, save, remove, rename, importItems };
 }

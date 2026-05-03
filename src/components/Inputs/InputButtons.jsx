@@ -15,7 +15,12 @@ import basic from './samples/hostname_discovery_(windows).yaml';
 import moderate from './samples/scheduled_task_startup_script.yaml';
 import complex from './samples/windows_push_file_using_scp.exe.yaml';
 import Tooltip from '@mui/material/Tooltip';
+import ButtonGroup from '@mui/material/ButtonGroup';
+import Snackbar from '@mui/material/Snackbar';
 import BookmarksRoundedIcon from '@mui/icons-material/BookmarksRounded';
+import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded';
+import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
+import UploadFileRoundedIcon from '@mui/icons-material/UploadFileRounded';
 import { Typography } from '@mui/material';
 import UploadButton from './UploadButton';
 import RepoLoaderButton from './RepoLoaderButton';
@@ -32,13 +37,114 @@ const SAMPLE_TECHNIQUE_META = [
 
 
 
+const LIBRARY_FILE_FORMAT = 'atomicgen.library.v1';
+
+function downloadStringAsFile(filename, content, mime = 'application/json') {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
 export default function InputButtons({ inputButtonErrors, setInputButtonErrors, base, darkMode, setInputs, setChanged, changed, setLoadedSource, onOpenLibrary }) {
     const [open, setOpen] = React.useState(false);
     const [samples, setSamples] = useState([]);
     const anchorRef = React.useRef(null);
     const confirm = useConfirm();
-    const { items: libraryItems } = useLocalLibrary();
+    const { items: libraryItems, importItems } = useLocalLibrary();
     const libraryCount = libraryItems.length;
+
+    // Library export/import dropdown
+    const libraryMenuRef = React.useRef(null);
+    const [libraryMenuOpen, setLibraryMenuOpen] = React.useState(false);
+    const fileInputRef = React.useRef(null);
+    const [libraryToast, setLibraryToast] = React.useState({ open: false, severity: 'success', message: '' });
+
+    const exportLibrary = () => {
+        setLibraryMenuOpen(false);
+        if (libraryItems.length === 0) return;
+        const payload = {
+            format: LIBRARY_FILE_FORMAT,
+            exportedAt: new Date().toISOString(),
+            items: libraryItems,
+        };
+        const stamp = new Date().toISOString().slice(0, 10);
+        downloadStringAsFile(`atomicgen-library-${stamp}.json`, JSON.stringify(payload, null, 2));
+        setLibraryToast({
+            open: true,
+            severity: 'success',
+            message: `Exported ${libraryItems.length} test${libraryItems.length === 1 ? '' : 's'}`,
+        });
+    };
+
+    const triggerImportPicker = () => {
+        setLibraryMenuOpen(false);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+            fileInputRef.current.click();
+        }
+    };
+
+    const handleImportFile = async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        try {
+            const text = await file.text();
+            let parsed;
+            try {
+                parsed = JSON.parse(text);
+            } catch (err) {
+                throw new Error(`Not valid JSON (${err.message || err})`);
+            }
+            if (!parsed || typeof parsed !== 'object') {
+                throw new Error('Library file must be a JSON object');
+            }
+            if (parsed.format && parsed.format !== LIBRARY_FILE_FORMAT) {
+                throw new Error(`Unknown library format "${parsed.format}" — expected ${LIBRARY_FILE_FORMAT}`);
+            }
+            const items = Array.isArray(parsed.items) ? parsed.items : Array.isArray(parsed) ? parsed : null;
+            if (!items) {
+                throw new Error('Library file is missing an "items" array');
+            }
+            // If the file would replace the entire library, ask first.
+            let mode = 'merge';
+            if (libraryItems.length > 0) {
+                const replace = await confirm({
+                    title: `Import ${items.length} test${items.length === 1 ? '' : 's'}?`,
+                    message: `You currently have ${libraryItems.length} saved test${libraryItems.length === 1 ? '' : 's'}.\n\n• "Merge" adds new entries and skips ones with the same id.\n• "Replace" wipes your current library first.`,
+                    confirmText: 'Replace',
+                    cancelText: 'Merge',
+                    severity: 'warning',
+                });
+                mode = replace ? 'replace' : 'merge';
+            }
+            const summary = importItems(items, mode);
+            setLibraryToast({
+                open: true,
+                severity: 'success',
+                message:
+                    mode === 'replace'
+                        ? `Replaced library with ${summary.added} test${summary.added === 1 ? '' : 's'}`
+                        : `Imported ${summary.added} new test${summary.added === 1 ? '' : 's'}` +
+                          (summary.skipped > 0 ? ` · ${summary.skipped} skipped (already in library)` : '') +
+                          (summary.invalid > 0 ? ` · ${summary.invalid} invalid` : ''),
+            });
+        } catch (err) {
+            setLibraryToast({
+                open: true,
+                severity: 'error',
+                message: `Import failed: ${err.message || err}`,
+            });
+        } finally {
+            // Allow re-importing the same file in the same session
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
 
     useEffect(() => {
         const fetchSamples = async () => {
@@ -149,62 +255,173 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
                     changed={changed}
                     setLoadedSource={setLoadedSource}
                 />
-                <Tooltip
-                    title={
-                        libraryCount === 0
-                            ? 'No saved tests yet — save a test from the YAML preview header to start your library'
-                            : `Browse ${libraryCount} saved test${libraryCount === 1 ? '' : 's'} in your library`
-                    }
+                <ButtonGroup
+                    ref={libraryMenuRef}
+                    variant="outlined"
+                    color="primary"
+                    sx={{
+                        '& .MuiButton-root': {
+                            borderColor: 'var(--glass-stroke-strong)',
+                            '&:hover': {
+                                borderColor: 'primary.main',
+                                background: 'var(--accent-soft)',
+                            },
+                            '&.Mui-disabled': {
+                                borderColor: 'var(--glass-stroke)',
+                                color: 'var(--text-faint)',
+                            },
+                        },
+                    }}
                 >
-                    <span>
+                    <Tooltip
+                        title={
+                            libraryCount === 0
+                                ? 'No saved tests yet — save a test from the YAML preview header to start your library'
+                                : `Browse ${libraryCount} saved test${libraryCount === 1 ? '' : 's'} in your library`
+                        }
+                    >
+                        <span>
+                            <Button
+                                disabled={libraryCount === 0}
+                                onClick={onOpenLibrary}
+                                startIcon={<BookmarksRoundedIcon sx={{ fontSize: 18 }} />}
+                                sx={{
+                                    textTransform: 'none',
+                                    fontWeight: 500,
+                                    borderRadius: '8px 0 0 8px',
+                                    gap: 0.25,
+                                }}
+                            >
+                                My Library
+                                {libraryCount > 0 && (
+                                    <Box
+                                        component="span"
+                                        sx={{
+                                            ml: 0.75,
+                                            px: 0.85,
+                                            py: 0.05,
+                                            borderRadius: 10,
+                                            background: 'var(--accent)',
+                                            color: '#fff',
+                                            fontSize: 10.5,
+                                            fontWeight: 700,
+                                            fontFamily: "'JetBrains Mono', monospace",
+                                            lineHeight: 1.4,
+                                            minWidth: 18,
+                                            textAlign: 'center',
+                                        }}
+                                    >
+                                        {libraryCount}
+                                    </Box>
+                                )}
+                            </Button>
+                        </span>
+                    </Tooltip>
+                    <Tooltip title="Library options — export · import">
                         <Button
-                            variant="outlined"
-                            color="primary"
-                            disabled={libraryCount === 0}
-                            onClick={onOpenLibrary}
-                            startIcon={<BookmarksRoundedIcon sx={{ fontSize: 18 }} />}
+                            onClick={() => setLibraryMenuOpen((v) => !v)}
+                            aria-label="Library options"
+                            aria-haspopup="menu"
+                            aria-expanded={libraryMenuOpen}
                             sx={{
                                 textTransform: 'none',
-                                fontWeight: 500,
-                                borderRadius: 2,
-                                borderColor: 'var(--glass-stroke-strong)',
-                                gap: 0.25,
-                                '&:hover': {
-                                    borderColor: 'primary.main',
-                                    background: 'var(--accent-soft)',
-                                },
-                                '&.Mui-disabled': {
-                                    borderColor: 'var(--glass-stroke)',
-                                    color: 'var(--text-faint)',
-                                },
+                                borderRadius: '0 8px 8px 0',
+                                px: 0.75,
+                                minWidth: 0,
                             }}
                         >
-                            My Library
-                            {libraryCount > 0 && (
-                                <Box
-                                    component="span"
-                                    sx={{
-                                        ml: 0.75,
-                                        px: 0.85,
-                                        py: 0.05,
-                                        borderRadius: 10,
-                                        background: 'var(--accent)',
-                                        color: '#fff',
-                                        fontSize: 10.5,
-                                        fontWeight: 700,
-                                        fontFamily: "'JetBrains Mono', monospace",
-                                        lineHeight: 1.4,
-                                        minWidth: 18,
-                                        textAlign: 'center',
-                                    }}
-                                >
-                                    {libraryCount}
-                                </Box>
-                            )}
+                            <KeyboardArrowDownRoundedIcon sx={{ fontSize: 18 }} />
                         </Button>
-                    </span>
-                </Tooltip>
+                    </Tooltip>
+                </ButtonGroup>
+
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleImportFile}
+                    style={{ display: 'none' }}
+                />
+
+                <Popper
+                    sx={{ zIndex: 1 }}
+                    open={libraryMenuOpen}
+                    anchorEl={libraryMenuRef.current}
+                    placement="bottom-end"
+                    transition
+                >
+                    {({ TransitionProps }) => (
+                        <Grow {...TransitionProps}>
+                            <Paper
+                                elevation={6}
+                                sx={{
+                                    background: 'var(--glass-modal)',
+                                    backdropFilter: 'blur(28px) saturate(180%)',
+                                    WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+                                    border: '1px solid var(--glass-stroke-strong)',
+                                    borderRadius: 2,
+                                    mt: 0.5,
+                                    minWidth: 240,
+                                    boxShadow: 'var(--shadow-modal)',
+                                }}
+                            >
+                                <ClickAwayListener onClickAway={() => setLibraryMenuOpen(false)}>
+                                    <MenuList autoFocusItem={libraryMenuOpen}>
+                                        <MenuItem
+                                            onClick={exportLibrary}
+                                            disabled={libraryCount === 0}
+                                            sx={{ gap: 1.25, py: 1, alignItems: 'center' }}
+                                        >
+                                            <DownloadRoundedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                                            <Box sx={{ flex: 1 }}>
+                                                <Typography sx={{ fontSize: 13, lineHeight: 1.3 }}>
+                                                    Export library
+                                                </Typography>
+                                                <Typography sx={{ fontSize: 10.5, color: 'var(--text-faint)' }}>
+                                                    {libraryCount === 0
+                                                        ? 'nothing to export'
+                                                        : `download all ${libraryCount} test${libraryCount === 1 ? '' : 's'} as JSON`}
+                                                </Typography>
+                                            </Box>
+                                        </MenuItem>
+                                        <MenuItem
+                                            onClick={triggerImportPicker}
+                                            sx={{ gap: 1.25, py: 1, alignItems: 'center' }}
+                                        >
+                                            <UploadFileRoundedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                                            <Box sx={{ flex: 1 }}>
+                                                <Typography sx={{ fontSize: 13, lineHeight: 1.3 }}>
+                                                    Import library…
+                                                </Typography>
+                                                <Typography sx={{ fontSize: 10.5, color: 'var(--text-faint)' }}>
+                                                    upload a previously exported library JSON
+                                                </Typography>
+                                            </Box>
+                                        </MenuItem>
+                                    </MenuList>
+                                </ClickAwayListener>
+                            </Paper>
+                        </Grow>
+                    )}
+                </Popper>
             </Box>
+
+            <Snackbar
+                open={libraryToast.open}
+                autoHideDuration={5000}
+                onClose={() => setLibraryToast((s) => ({ ...s, open: false }))}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                sx={{ bottom: { xs: 36, sm: 36 } }}
+            >
+                <Alert
+                    severity={libraryToast.severity}
+                    variant="outlined"
+                    onClose={() => setLibraryToast((s) => ({ ...s, open: false }))}
+                    sx={{ borderRadius: 2, backdropFilter: 'blur(20px)', background: 'var(--glass-modal)' }}
+                >
+                    {libraryToast.message}
+                </Alert>
+            </Snackbar>
             {inputButtonErrors.length > 0 &&
                 <Alert sx={{ mt: 1 }} variant={darkMode ? "outlined" : "filled"} severity='error'>
                         {inputButtonErrors.map((error, index) => (
