@@ -20,7 +20,7 @@ import Editor from './Editor';
 import LintPanel from './LintPanel';
 import DetectionExportModal from './DetectionExportModal';
 import ContributeModal from './ContributeModal';
-import DryRunPreview from './DryRunPreview';
+import HowToRun from './HowToRun';
 import DiffViewer from './DiffViewer';
 import VariantSuggestModal from './VariantSuggestModal';
 import useLintFindings from '../hooks/useLintFindings';
@@ -468,7 +468,7 @@ function YamlContent({ darkMode, inputs, setInputs, setLoadedSource, updated, ba
             }}
           >
             <Tab value="yaml" label="YAML" />
-            <Tab value="dryrun" label="Dry-run" />
+            <Tab value="howto" label="How to run" />
             {originalSnapshot && <Tab value="diff" label="Diff" />}
           </Tabs>
         </Box>
@@ -514,8 +514,8 @@ function YamlContent({ darkMode, inputs, setInputs, setLoadedSource, updated, ba
       {/* Body */}
       <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
         {showContent ? (
-          activeTab === 'dryrun' ? (
-            <DryRunPreview inputs={inputs} />
+          activeTab === 'howto' ? (
+            <HowToRun inputs={inputs} />
           ) : activeTab === 'diff' ? (
             <DiffViewer original={originalSnapshot} current={formatted_yaml} />
           ) : (

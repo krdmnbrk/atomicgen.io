@@ -31,7 +31,6 @@ import TechniquePicker from './Inputs/TechniquePicker';
 import Editor from './Editor';
 import InputButtons from './Inputs/InputButtons';
 import AiAssistant from './Inputs/AiAssistant';
-import DetectionGuidancePanel from './DetectionGuidancePanel';
 import useAtomicIndex from '../hooks/useAtomicIndex';
 import { inputSx } from './inputStyles';
 
@@ -568,14 +567,6 @@ function Inputs({
                     </Tooltip>
                 </Box>
             </Paper>
-
-            {/* ─── DETECTION GUIDANCE (curated, only when TID is set) ─── */}
-            {inputs.attack_technique && (
-                <DetectionGuidancePanel
-                    tid={inputs.attack_technique}
-                    supportedPlatforms={inputs.supported_platforms || []}
-                />
-            )}
 
             {/* ─── EXECUTION ─── */}
             <Paper elevation={0} sx={glassSection}>
