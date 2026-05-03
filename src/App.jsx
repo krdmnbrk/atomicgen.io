@@ -12,6 +12,7 @@ import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import { ConfirmProvider } from './components/ConfirmDialog';
 import { inputsToYaml } from './utils/atomicYaml';
+import { decodeStateFromHash, clearShareHash } from './utils/shareUrl';
 
 const executor_names = [
   "powershell",
@@ -148,12 +149,21 @@ function App() {
   // Draft restore prompt (shown on initial load if a saved draft exists)
   const [draftRestoreOpen, setDraftRestoreOpen] = useState(false);
   const [savedDraft, setSavedDraft] = useState(null);
+  // Share-via-URL pending state
+  const [shareRestoreOpen, setShareRestoreOpen] = useState(false);
+  const [pendingShare, setPendingShare] = useState(null);
   // Reset undo (10s window)
   const [undoSnack, setUndoSnack] = useState({ open: false, snapshot: null });
   const undoTimerRef = useRef(null);
 
-  // On mount: try to restore draft from localStorage
+  // On mount: shared link in URL takes precedence over draft restore.
   useEffect(() => {
+    const shared = decodeStateFromHash(window.location.hash);
+    if (shared) {
+      setPendingShare(shared);
+      setShareRestoreOpen(true);
+      return;
+    }
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
       if (raw) {
@@ -193,6 +203,22 @@ function App() {
     try { localStorage.removeItem(DRAFT_KEY); } catch {}
     setDraftRestoreOpen(false);
     setSavedDraft(null);
+  };
+
+  const restoreShared = () => {
+    if (pendingShare) {
+      setInputs(pendingShare);
+      setLoadedSource({ type: 'shared' });
+    }
+    clearShareHash();
+    setShareRestoreOpen(false);
+    setPendingShare(null);
+  };
+
+  const dismissShared = () => {
+    clearShareHash();
+    setShareRestoreOpen(false);
+    setPendingShare(null);
   };
 
   // Reset with undo
@@ -587,9 +613,34 @@ function App() {
         </Grid>
       </Box>
 
+      {/* Restore shared-via-URL prompt (takes precedence over draft) */}
+      <Snackbar
+        open={shareRestoreOpen}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        onClose={() => {}}
+      >
+        <Alert
+          severity="info"
+          variant="outlined"
+          sx={{ borderRadius: 2, alignItems: 'center', backdropFilter: 'blur(20px)', background: 'var(--glass-modal)' }}
+          action={
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button color="inherit" size="small" onClick={dismissShared}>
+                Dismiss
+              </Button>
+              <Button color="primary" size="small" variant="contained" onClick={restoreShared}>
+                Load shared
+              </Button>
+            </Box>
+          }
+        >
+          A shared atomic test is encoded in this URL.
+        </Alert>
+      </Snackbar>
+
       {/* Restore draft prompt */}
       <Snackbar
-        open={draftRestoreOpen}
+        open={draftRestoreOpen && !shareRestoreOpen}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
         onClose={() => {}}
       >

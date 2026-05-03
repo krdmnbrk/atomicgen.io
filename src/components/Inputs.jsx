@@ -324,6 +324,12 @@ function Inputs({
                             Restored from autosave
                         </>
                     )}
+                    {loadedSource.type === 'shared' && (
+                        <>
+                            <Box component="span" sx={{ opacity: 0.7 }}>🔗</Box>
+                            Loaded from shared link
+                        </>
+                    )}
                     {changed && (
                         <Box
                             component="span"

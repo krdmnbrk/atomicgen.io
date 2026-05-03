@@ -12,6 +12,7 @@ import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import TerminalRoundedIcon from '@mui/icons-material/TerminalRounded';
 import RadarRoundedIcon from '@mui/icons-material/RadarRounded';
 import CallSplitRoundedIcon from '@mui/icons-material/CallSplitRounded';
+import IosShareRoundedIcon from '@mui/icons-material/IosShareRounded';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Editor from './Editor';
@@ -23,6 +24,7 @@ import DiffViewer from './DiffViewer';
 import useLintFindings from '../hooks/useLintFindings';
 import { summarizeFindings } from '../utils/atLinter';
 import { inputsToYaml, inputsToAtomicTestObject } from '../utils/atomicYaml';
+import { encodeStateToUrl } from '../utils/shareUrl';
 
 const downloadStringAsFile = (filename, content) => {
   const blob = new Blob([content], { type: 'text/plain' });
@@ -105,6 +107,17 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
   const [contributeOpen, setContributeOpen] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState('yaml');
   const [copiedSnippet, setCopiedSnippet] = React.useState(false);
+  const [copiedShare, setCopiedShare] = React.useState(false);
+  const copyShareLink = async () => {
+    try {
+      const url = encodeStateToUrl(inputs);
+      await navigator.clipboard.writeText(url);
+      setCopiedShare(true);
+      setTimeout(() => setCopiedShare(false), 2000);
+    } catch {
+      /* noop */
+    }
+  };
   const invokeAtomicSnippet = (() => {
     const tid = (inputs.attack_technique || '').trim();
     const guid = (inputs.auto_generated_guid || '').trim();
@@ -382,6 +395,17 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
                   <CheckRoundedIcon sx={{ fontSize: 16, color: 'success.main' }} />
                 ) : (
                   <ContentCopyRoundedIcon sx={{ fontSize: 16 }} />
+                )}
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title={copiedShare ? 'Share link copied!' : 'Copy a shareable link (state encoded in URL)'}>
+            <span>
+              <IconButton disabled={!showContent} onClick={copyShareLink} sx={iconBtnSx} aria-label="Copy share link">
+                {copiedShare ? (
+                  <CheckRoundedIcon sx={{ fontSize: 16, color: 'success.main' }} />
+                ) : (
+                  <IosShareRoundedIcon sx={{ fontSize: 16 }} />
                 )}
               </IconButton>
             </span>
