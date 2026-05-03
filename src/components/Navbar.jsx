@@ -14,7 +14,6 @@ import {
 import LaunchIcon from '@mui/icons-material/Launch';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import LibraryBooksRoundedIcon from '@mui/icons-material/LibraryBooksRounded';
-import GridViewRoundedIcon from '@mui/icons-material/GridViewRounded';
 import Tooltip from '@mui/material/Tooltip';
 import {
   GitHub as GitHubIcon,
@@ -224,17 +223,28 @@ function Navbar({ darkMode, setDarkMode, onOpenLibrary, onOpenHeatmap }) {
           </Menu>
 
           {onOpenHeatmap && (
-            <Tooltip title="Coverage heatmap — your tests vs. atomic-red-team catalog" placement="bottom">
+            <Tooltip title="ATT&CK coverage heatmap — your tests vs. atomic-red-team catalog" placement="bottom">
               <IconButton
                 onClick={onOpenHeatmap}
                 color="inherit"
-                aria-label="Open coverage heatmap"
+                aria-label="Open ATT&CK coverage heatmap"
                 sx={{
                   borderRadius: 2.5,
+                  p: 0.75,
                   '&:hover': { background: 'var(--glass-strong)' },
                 }}
               >
-                <GridViewRoundedIcon fontSize="medium" />
+                <Box
+                  component="img"
+                  src="https://attack.mitre.org/theme/images/ATT%26CK_red.png"
+                  alt="ATT&CK"
+                  sx={{
+                    width: 24,
+                    height: 24,
+                    display: 'block',
+                    objectFit: 'contain',
+                  }}
+                />
               </IconButton>
             </Tooltip>
           )}
