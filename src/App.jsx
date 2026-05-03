@@ -12,6 +12,7 @@ import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import { ConfirmProvider } from './components/ConfirmDialog';
 import MyTestsLibrary from './components/MyTestsLibrary';
+import CoverageHeatmap from './components/CoverageHeatmap';
 import { inputsToYaml } from './utils/atomicYaml';
 import { decodeStateFromHash, clearShareHash } from './utils/shareUrl';
 
@@ -159,6 +160,8 @@ function App() {
     setInputs(libInputs);
     setLoadedSource({ type: 'library' });
   };
+  // Coverage heatmap modal
+  const [heatmapOpen, setHeatmapOpen] = useState(false);
   // Reset undo (10s window)
   const [undoSnack, setUndoSnack] = useState({ open: false, snapshot: null });
   const undoTimerRef = useRef(null);
@@ -584,6 +587,7 @@ function App() {
         darkMode={darkMode}
         setDarkMode={setDarkMode}
         onOpenLibrary={() => setLibraryOpen(true)}
+        onOpenHeatmap={() => setHeatmapOpen(true)}
       />
       <Box id="main-content" component="main" sx={{ p: { xs: 2, md: 3 }, maxWidth: 1500, mx: 'auto' }}>
         <Grid container spacing={{ xs: 2, md: 3 }}>
@@ -702,6 +706,12 @@ function App() {
         currentInputs={inputs}
         onLoad={loadFromLibrary}
         formIsModified={changed}
+      />
+
+      <CoverageHeatmap
+        open={heatmapOpen}
+        onClose={() => setHeatmapOpen(false)}
+        currentInputs={inputs}
       />
 
       </ConfirmProvider>

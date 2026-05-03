@@ -14,6 +14,7 @@ import {
 import LaunchIcon from '@mui/icons-material/Launch';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import LibraryBooksRoundedIcon from '@mui/icons-material/LibraryBooksRounded';
+import GridViewRoundedIcon from '@mui/icons-material/GridViewRounded';
 import Tooltip from '@mui/material/Tooltip';
 import {
   GitHub as GitHubIcon,
@@ -21,7 +22,7 @@ import {
   DarkModeOutlined as DarkModeOutlinedIcon,
 } from '@mui/icons-material';
 
-function Navbar({ darkMode, setDarkMode, onOpenLibrary }) {
+function Navbar({ darkMode, setDarkMode, onOpenLibrary, onOpenHeatmap }) {
   const [anchorEl, setAnchorEl] = useState(null);
 
   const usefulLinks = [
@@ -222,6 +223,21 @@ function Navbar({ darkMode, setDarkMode, onOpenLibrary }) {
             ))}
           </Menu>
 
+          {onOpenHeatmap && (
+            <Tooltip title="Coverage heatmap — your tests vs. atomic-red-team catalog" placement="bottom">
+              <IconButton
+                onClick={onOpenHeatmap}
+                color="inherit"
+                aria-label="Open coverage heatmap"
+                sx={{
+                  borderRadius: 2.5,
+                  '&:hover': { background: 'var(--glass-strong)' },
+                }}
+              >
+                <GridViewRoundedIcon fontSize="medium" />
+              </IconButton>
+            </Tooltip>
+          )}
           {onOpenLibrary && (
             <Tooltip title="My Tests library — saved drafts in your browser" placement="bottom">
               <IconButton
