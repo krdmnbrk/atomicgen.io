@@ -19,6 +19,7 @@ import LintPanel from './LintPanel';
 import DetectionExportModal from './DetectionExportModal';
 import ContributeModal from './ContributeModal';
 import DryRunPreview from './DryRunPreview';
+import DiffViewer from './DiffViewer';
 import useLintFindings from '../hooks/useLintFindings';
 import { summarizeFindings } from '../utils/atLinter';
 import { inputsToYaml, inputsToAtomicTestObject } from '../utils/atomicYaml';
@@ -35,7 +36,7 @@ const downloadStringAsFile = (filename, content) => {
   URL.revokeObjectURL(url);
 };
 
-function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErrors, setChanged, changed, onReset }) {
+function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErrors, setChanged, changed, onReset, originalSnapshot }) {
   const [formatted_yaml, setFormattedYaml] = React.useState(null);
   const [showContent, setShowContent] = React.useState(false);
   const [showLintPanel, setShowLintPanel] = React.useState(false);
@@ -421,6 +422,7 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
           >
             <Tab value="yaml" label="YAML" />
             <Tab value="dryrun" label="Dry-run" />
+            {originalSnapshot && <Tab value="diff" label="Diff" />}
           </Tabs>
         </Box>
       )}
@@ -452,6 +454,8 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
         {showContent ? (
           activeTab === 'dryrun' ? (
             <DryRunPreview inputs={inputs} />
+          ) : activeTab === 'diff' ? (
+            <DiffViewer original={originalSnapshot} current={formatted_yaml} />
           ) : (
             <Editor
               darkMode={darkMode}

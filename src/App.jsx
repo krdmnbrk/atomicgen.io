@@ -11,6 +11,7 @@ import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import { ConfirmProvider } from './components/ConfirmDialog';
+import { inputsToYaml } from './utils/atomicYaml';
 
 const executor_names = [
   "powershell",
@@ -141,6 +142,9 @@ function App() {
   const [changed, setChanged] = useState(false);
   // Source provenance — set by RepoLoader / UploadButton / AiAssistant when they hydrate the form
   const [loadedSource, setLoadedSource] = useState(null);
+  // Snapshot of YAML at the moment a test was loaded — used by the Diff tab
+  // so users can see exactly what they've changed since hydration.
+  const [originalSnapshot, setOriginalSnapshot] = useState(null);
   // Draft restore prompt (shown on initial load if a saved draft exists)
   const [draftRestoreOpen, setDraftRestoreOpen] = useState(false);
   const [savedDraft, setSavedDraft] = useState(null);
@@ -193,10 +197,11 @@ function App() {
 
   // Reset with undo
   const resetWithUndo = () => {
-    const snapshot = { inputs, source: loadedSource };
+    const snapshot = { inputs, source: loadedSource, originalSnapshot };
     setInputs(base);
     setChanged(false);
     setLoadedSource(null);
+    setOriginalSnapshot(null);
     setUndoSnack({ open: true, snapshot });
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     undoTimerRef.current = setTimeout(() => {
@@ -207,10 +212,24 @@ function App() {
     if (undoSnack.snapshot) {
       setInputs(undoSnack.snapshot.inputs);
       setLoadedSource(undoSnack.snapshot.source);
+      setOriginalSnapshot(undoSnack.snapshot.originalSnapshot || null);
     }
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     setUndoSnack({ open: false, snapshot: null });
   };
+
+  // Snapshot the YAML when a test is loaded from anywhere (repo / upload /
+  // sample / AI / draft). Intentionally only depends on `loadedSource` —
+  // setInputs + setLoadedSource batch in the same handler, so by the time
+  // this effect runs, `inputs` already reflects the loaded test.
+  useEffect(() => {
+    if (loadedSource) {
+      setOriginalSnapshot(inputsToYaml(inputs));
+    } else {
+      setOriginalSnapshot(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadedSource]);
 
   // Prevent page reload
   useEffect(() => {
@@ -562,6 +581,7 @@ function App() {
               setChanged={setChanged}
               changed={changed}
               onReset={resetWithUndo}
+              originalSnapshot={originalSnapshot}
             />
           </Grid>
         </Grid>
