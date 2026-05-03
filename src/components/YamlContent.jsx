@@ -12,10 +12,13 @@ import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import TerminalRoundedIcon from '@mui/icons-material/TerminalRounded';
 import RadarRoundedIcon from '@mui/icons-material/RadarRounded';
 import CallSplitRoundedIcon from '@mui/icons-material/CallSplitRounded';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
 import Editor from './Editor';
 import LintPanel from './LintPanel';
 import DetectionExportModal from './DetectionExportModal';
 import ContributeModal from './ContributeModal';
+import DryRunPreview from './DryRunPreview';
 import useLintFindings from '../hooks/useLintFindings';
 import { summarizeFindings } from '../utils/atLinter';
 import { inputsToYaml, inputsToAtomicTestObject } from '../utils/atomicYaml';
@@ -99,6 +102,7 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
 
   const [detectionOpen, setDetectionOpen] = React.useState(false);
   const [contributeOpen, setContributeOpen] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState('yaml');
   const [copiedSnippet, setCopiedSnippet] = React.useState(false);
   const invokeAtomicSnippet = (() => {
     const tid = (inputs.attack_technique || '').trim();
@@ -391,6 +395,36 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
         </Box>
       </Box>
 
+      {/* Tabs (only when content is shown) */}
+      {showContent && (
+        <Box
+          sx={{
+            px: { xs: 1.5, sm: 2.5 },
+            borderBottom: '1px solid var(--glass-stroke)',
+          }}
+        >
+          <Tabs
+            value={activeTab}
+            onChange={(_, v) => setActiveTab(v)}
+            sx={{
+              minHeight: 36,
+              '& .MuiTab-root': {
+                textTransform: 'none',
+                minHeight: 36,
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'text.secondary',
+                py: 0.5,
+              },
+              '& .Mui-selected': { color: 'primary.main' },
+            }}
+          >
+            <Tab value="yaml" label="YAML" />
+            <Tab value="dryrun" label="Dry-run" />
+          </Tabs>
+        </Box>
+      )}
+
       {/* Lint findings panel */}
       {showLintPanel && lintFindings.length > 0 && (
         <LintPanel findings={lintFindings} onJumpToField={jumpToField} />
@@ -416,15 +450,19 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
       {/* Body */}
       <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
         {showContent ? (
-          <Editor
-            darkMode={darkMode}
-            name="yaml-content"
-            value={formatted_yaml}
-            mode="yaml"
-            readOnly={true}
-            highlightActiveLine={false}
-            maxLines={500}
-          />
+          activeTab === 'dryrun' ? (
+            <DryRunPreview inputs={inputs} />
+          ) : (
+            <Editor
+              darkMode={darkMode}
+              name="yaml-content"
+              value={formatted_yaml}
+              mode="yaml"
+              readOnly={true}
+              highlightActiveLine={false}
+              maxLines={500}
+            />
+          )
         ) : (
           <Box
             sx={{
