@@ -16,6 +16,7 @@ RUN npm ci
 COPY . .
 
 # Run the build command to create production-ready static files
+ARG PUBLIC_URL
 RUN npm run build
 
 # Second stage: Use Nginx to serve the built files
