@@ -1,6 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
 
 const KEY = 'atomicgen.library.v1';
+// Same-tab fan-out — `storage` events only fire across tabs, so we emit
+// a synthetic CustomEvent to keep multiple useLocalLibrary instances
+// (drawer + InputButtons count badge + YamlContent save button) in sync
+// within a single tab.
+const CHANGE_EVENT = 'atomicgen.library.changed';
+
+function notify() {
+    try {
+        window.dispatchEvent(new Event(CHANGE_EVENT));
+    } catch {
+        /* noop */
+    }
+}
 
 function read() {
     try {
@@ -31,13 +44,19 @@ function uuid() {
 export default function useLocalLibrary() {
     const [items, setItems] = useState(read);
 
-    // Stay in sync if another tab modifies the library.
+    // Stay in sync — both across tabs (storage event) and within the
+    // same tab (custom CHANGE_EVENT we dispatch on every mutation below).
     useEffect(() => {
-        const handler = (e) => {
+        const storageHandler = (e) => {
             if (e.key === KEY) setItems(read());
         };
-        window.addEventListener('storage', handler);
-        return () => window.removeEventListener('storage', handler);
+        const sameTabHandler = () => setItems(read());
+        window.addEventListener('storage', storageHandler);
+        window.addEventListener(CHANGE_EVENT, sameTabHandler);
+        return () => {
+            window.removeEventListener('storage', storageHandler);
+            window.removeEventListener(CHANGE_EVENT, sameTabHandler);
+        };
     }, []);
 
     const save = useCallback((name, inputs) => {
@@ -49,6 +68,7 @@ export default function useLocalLibrary() {
                 ...prev,
             ];
             write(next);
+            notify();
             return next;
         });
     }, []);
@@ -57,6 +77,7 @@ export default function useLocalLibrary() {
         setItems((prev) => {
             const next = prev.filter((x) => x.id !== id);
             write(next);
+            notify();
             return next;
         });
     }, []);
@@ -67,6 +88,7 @@ export default function useLocalLibrary() {
                 x.id === id ? { ...x, name: (newName && newName.trim()) || x.name } : x
             );
             write(next);
+            notify();
             return next;
         });
     }, []);

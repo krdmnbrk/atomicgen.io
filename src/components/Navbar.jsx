@@ -13,7 +13,6 @@ import {
 } from '@mui/material';
 import LaunchIcon from '@mui/icons-material/Launch';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import LibraryBooksRoundedIcon from '@mui/icons-material/LibraryBooksRounded';
 import Tooltip from '@mui/material/Tooltip';
 import {
   GitHub as GitHubIcon,
@@ -21,7 +20,7 @@ import {
   DarkModeOutlined as DarkModeOutlinedIcon,
 } from '@mui/icons-material';
 
-function Navbar({ darkMode, setDarkMode, onOpenLibrary, onOpenHeatmap }) {
+function Navbar({ darkMode, setDarkMode }) {
   const [anchorEl, setAnchorEl] = useState(null);
 
   const usefulLinks = [
@@ -221,48 +220,6 @@ function Navbar({ darkMode, setDarkMode, onOpenLibrary, onOpenHeatmap }) {
               </MenuItem>
             ))}
           </Menu>
-
-          {onOpenHeatmap && (
-            <Tooltip title="ATT&CK coverage heatmap — your tests vs. atomic-red-team catalog" placement="bottom">
-              <IconButton
-                onClick={onOpenHeatmap}
-                color="inherit"
-                aria-label="Open ATT&CK coverage heatmap"
-                sx={{
-                  borderRadius: 2.5,
-                  p: 0.75,
-                  '&:hover': { background: 'var(--glass-strong)' },
-                }}
-              >
-                <Box
-                  component="img"
-                  src="https://attack.mitre.org/theme/images/ATT%26CK_red.png"
-                  alt="ATT&CK"
-                  sx={{
-                    width: 24,
-                    height: 24,
-                    display: 'block',
-                    objectFit: 'contain',
-                  }}
-                />
-              </IconButton>
-            </Tooltip>
-          )}
-          {onOpenLibrary && (
-            <Tooltip title="My Tests library — saved drafts in your browser" placement="bottom">
-              <IconButton
-                onClick={onOpenLibrary}
-                color="inherit"
-                aria-label="Open My Tests library"
-                sx={{
-                  borderRadius: 2.5,
-                  '&:hover': { background: 'var(--glass-strong)' },
-                }}
-              >
-                <LibraryBooksRoundedIcon fontSize="medium" />
-              </IconButton>
-            </Tooltip>
-          )}
 
           <IconButton
             component="a"

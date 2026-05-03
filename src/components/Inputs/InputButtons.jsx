@@ -14,11 +14,14 @@ import Alert from '@mui/material/Alert';
 import basic from './samples/hostname_discovery_(windows).yaml';
 import moderate from './samples/scheduled_task_startup_script.yaml';
 import complex from './samples/windows_push_file_using_scp.exe.yaml';
+import Tooltip from '@mui/material/Tooltip';
+import BookmarksRoundedIcon from '@mui/icons-material/BookmarksRounded';
 import { Typography } from '@mui/material';
 import UploadButton from './UploadButton';
 import RepoLoaderButton from './RepoLoaderButton';
 import { mergeTechniqueAndTestIntoForm } from '../../utils/aiResponseValidator';
 import { useConfirm } from '../ConfirmDialog';
+import useLocalLibrary from '../../hooks/useLocalLibrary';
 
 // Best-known ATT&CK mappings for the bundled sample tests.
 const SAMPLE_TECHNIQUE_META = [
@@ -29,11 +32,13 @@ const SAMPLE_TECHNIQUE_META = [
 
 
 
-export default function InputButtons({ inputButtonErrors, setInputButtonErrors, base, darkMode, setInputs, setChanged, changed, setLoadedSource }) {
+export default function InputButtons({ inputButtonErrors, setInputButtonErrors, base, darkMode, setInputs, setChanged, changed, setLoadedSource, onOpenLibrary }) {
     const [open, setOpen] = React.useState(false);
     const [samples, setSamples] = useState([]);
     const anchorRef = React.useRef(null);
     const confirm = useConfirm();
+    const { items: libraryItems } = useLocalLibrary();
+    const libraryCount = libraryItems.length;
 
     useEffect(() => {
         const fetchSamples = async () => {
@@ -144,6 +149,61 @@ export default function InputButtons({ inputButtonErrors, setInputButtonErrors, 
                     changed={changed}
                     setLoadedSource={setLoadedSource}
                 />
+                <Tooltip
+                    title={
+                        libraryCount === 0
+                            ? 'No saved tests yet — save a test from the YAML preview header to start your library'
+                            : `Browse ${libraryCount} saved test${libraryCount === 1 ? '' : 's'} in your library`
+                    }
+                >
+                    <span>
+                        <Button
+                            variant="outlined"
+                            color="primary"
+                            disabled={libraryCount === 0}
+                            onClick={onOpenLibrary}
+                            startIcon={<BookmarksRoundedIcon sx={{ fontSize: 18 }} />}
+                            sx={{
+                                textTransform: 'none',
+                                fontWeight: 500,
+                                borderRadius: 2,
+                                borderColor: 'var(--glass-stroke-strong)',
+                                gap: 0.25,
+                                '&:hover': {
+                                    borderColor: 'primary.main',
+                                    background: 'var(--accent-soft)',
+                                },
+                                '&.Mui-disabled': {
+                                    borderColor: 'var(--glass-stroke)',
+                                    color: 'var(--text-faint)',
+                                },
+                            }}
+                        >
+                            My Library
+                            {libraryCount > 0 && (
+                                <Box
+                                    component="span"
+                                    sx={{
+                                        ml: 0.75,
+                                        px: 0.85,
+                                        py: 0.05,
+                                        borderRadius: 10,
+                                        background: 'var(--accent)',
+                                        color: '#fff',
+                                        fontSize: 10.5,
+                                        fontWeight: 700,
+                                        fontFamily: "'JetBrains Mono', monospace",
+                                        lineHeight: 1.4,
+                                        minWidth: 18,
+                                        textAlign: 'center',
+                                    }}
+                                >
+                                    {libraryCount}
+                                </Box>
+                            )}
+                        </Button>
+                    </span>
+                </Tooltip>
             </Box>
             {inputButtonErrors.length > 0 &&
                 <Alert sx={{ mt: 1 }} variant={darkMode ? "outlined" : "filled"} severity='error'>

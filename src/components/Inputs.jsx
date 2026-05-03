@@ -103,6 +103,7 @@ function Inputs({
     supported_platforms,
     loadedSource,
     setLoadedSource,
+    onOpenLibrary,
 }) {
     // AI prompt search query — lifted here so it can count as "dirty" for
     // overwrite confirmations and be cleared when a test is loaded.
@@ -259,6 +260,7 @@ function Inputs({
                     changed={dirty}
                     darkMode={darkMode}
                     setLoadedSource={setLoadedSource}
+                    onOpenLibrary={onOpenLibrary}
                 />
             </Box>
 
