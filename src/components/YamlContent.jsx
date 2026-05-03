@@ -25,7 +25,7 @@ import DiffViewer from './DiffViewer';
 import VariantSuggestModal from './VariantSuggestModal';
 import useLintFindings from '../hooks/useLintFindings';
 import { summarizeFindings } from '../utils/atLinter';
-import { inputsToYaml, inputsToAtomicTestObject } from '../utils/atomicYaml';
+import { inputsToYaml } from '../utils/atomicYaml';
 import { encodeStateToUrl } from '../utils/shareUrl';
 
 const downloadStringAsFile = (filename, content) => {
