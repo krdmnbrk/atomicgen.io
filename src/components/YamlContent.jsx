@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react';
-import yaml from 'js-yaml';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Box from '@mui/material/Box';
@@ -12,11 +11,14 @@ import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import TerminalRoundedIcon from '@mui/icons-material/TerminalRounded';
 import RadarRoundedIcon from '@mui/icons-material/RadarRounded';
+import CallSplitRoundedIcon from '@mui/icons-material/CallSplitRounded';
 import Editor from './Editor';
 import LintPanel from './LintPanel';
 import DetectionExportModal from './DetectionExportModal';
+import ContributeModal from './ContributeModal';
 import useLintFindings from '../hooks/useLintFindings';
 import { summarizeFindings } from '../utils/atLinter';
+import { inputsToYaml, inputsToAtomicTestObject } from '../utils/atomicYaml';
 
 const downloadStringAsFile = (filename, content) => {
   const blob = new Blob([content], { type: 'text/plain' });
@@ -29,103 +31,6 @@ const downloadStringAsFile = (filename, content) => {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 };
-
-// Build a single atomic_test object from the form inputs.
-// Drops the technique-level fields (attack_technique, display_name, auto_generated_guid)
-// because those are placed at the top-level wrapper.
-const atomic_test_from_inputs = (inputs) => {
-  const test = {};
-  const TECHNIQUE_FIELDS = new Set(['attack_technique', 'display_name', 'auto_generated_guid']);
-  Object.keys(inputs).forEach((key) => {
-    if (TECHNIQUE_FIELDS.has(key)) return;
-    if (key === 'input_arguments') {
-      test['input_arguments'] = {};
-      inputs.input_arguments.forEach((input) => {
-        if (!input.name) return;
-        test['input_arguments'][input.name] = {
-          type: input['type'],
-          default: input['default'],
-          description: input['description'],
-        };
-      });
-    } else if (key === 'executor') {
-      // Drop executor sub-fields based on executor type.
-      const exec = { ...inputs.executor };
-      if (exec.name === 'manual') {
-        delete exec.command;
-        delete exec.cleanup_command;
-      } else {
-        delete exec.steps;
-      }
-      test['executor'] = exec;
-    } else {
-      test[key] = inputs[key];
-    }
-  });
-  if (inputs.auto_generated_guid) {
-    test.auto_generated_guid = inputs.auto_generated_guid;
-  }
-  return test;
-};
-
-// Wrap a single atomic_test in the canonical Atomic Red Team technique-level shape.
-const buildTechniqueWrapper = (inputs) => {
-  return {
-    attack_technique: inputs.attack_technique || null,
-    display_name: inputs.display_name || null,
-    atomic_tests: [atomic_test_from_inputs(inputs)],
-  };
-};
-
-// Strip null/undefined and empty containers, but preserve intentionally-empty strings
-// (e.g. input_arguments[*].default = "") since AT corpus uses those.
-function cleanObject(obj) {
-  if (Array.isArray(obj)) {
-    return obj
-      .map(cleanObject)
-      .filter(
-        (item) =>
-          item !== null &&
-          item !== undefined &&
-          !(Array.isArray(item) && item.length === 0)
-      );
-  } else if (typeof obj === 'object' && obj !== null) {
-    const cleanedObject = {};
-    for (const [key, value] of Object.entries(obj)) {
-      const cleanedValue = cleanObject(value);
-      if (
-        cleanedValue !== null &&
-        cleanedValue !== undefined &&
-        !(Array.isArray(cleanedValue) && cleanedValue.length === 0) &&
-        !(typeof cleanedValue === 'object' && !Array.isArray(cleanedValue) && Object.keys(cleanedValue).length === 0)
-      ) {
-        cleanedObject[key] = cleanedValue;
-      }
-    }
-    return cleanedObject;
-  }
-  // null/undefined → drop. Empty strings are PRESERVED.
-  return obj === null || obj === undefined ? undefined : obj;
-}
-
-// Force `|` block scalar style for any multi-line string the YAML dumper encounters.
-// Without this js-yaml may emit folded or quoted forms that don't match AT corpus style.
-const yamlDumpOpts = {
-  lineWidth: -1,
-  noRefs: true,
-  styles: { '!!null': 'empty' },
-  // Per-key scalar style hints
-  replacer: undefined,
-};
-
-function dumpAtomicYaml(wrapper) {
-  return yaml.dump(wrapper, {
-    ...yamlDumpOpts,
-    // Prefer literal block scalar for any multi-line string
-    forceQuotes: false,
-    quotingType: '"',
-  });
-}
 
 function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErrors, setChanged, changed, onReset }) {
   const [formatted_yaml, setFormattedYaml] = React.useState(null);
@@ -161,19 +66,7 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
   }, [lintCounts.error, jumpToFirstError]);
 
   useEffect(() => {
-    const wrapper = cleanObject(buildTechniqueWrapper(inputs));
-    // Post-process: force `|` block scalar for any multi-line string field.
-    setFormattedYaml(dumpAtomicYaml(wrapper).replace(
-      /^( *)([a-z_]+): "((?:[^"\\]|\\.)*\\n(?:[^"\\]|\\.)*)"$/gm,
-      (_, indent, key, body) => {
-        const decoded = body.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-        const inner = decoded
-          .split('\n')
-          .map((line) => indent + '  ' + line)
-          .join('\n');
-        return `${indent}${key}: |\n${inner}`;
-      }
-    ));
+    setFormattedYaml(inputsToYaml(inputs));
     if (lintFindings.length === 0) {
       setShowLintPanel(false);
     }
@@ -205,6 +98,7 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
   };
 
   const [detectionOpen, setDetectionOpen] = React.useState(false);
+  const [contributeOpen, setContributeOpen] = React.useState(false);
   const [copiedSnippet, setCopiedSnippet] = React.useState(false);
   const invokeAtomicSnippet = (() => {
     const tid = (inputs.attack_technique || '').trim();
@@ -401,6 +295,35 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
           <Tooltip
             title={
               showContent
+                ? inputs.attack_technique
+                  ? 'Contribute this test to atomic-red-team (open pre-filled fork on GitHub)'
+                  : 'Set an ATT&CK technique to enable contribute flow'
+                : 'Author a test first, then contribute'
+            }
+          >
+            <span>
+              <IconButton
+                disabled={!showContent || !inputs.attack_technique}
+                onClick={() => setContributeOpen(true)}
+                sx={{
+                  ...iconBtnSx,
+                  color: 'primary.main',
+                  borderColor: 'rgba(255,92,57,0.40)',
+                  '&:hover': {
+                    background: 'var(--accent-soft)',
+                    color: 'primary.main',
+                    borderColor: 'primary.main',
+                  },
+                }}
+                aria-label="Contribute to atomic-red-team"
+              >
+                <CallSplitRoundedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip
+            title={
+              showContent
                 ? 'Generate detection rule stubs (Sigma · KQL · SPL · EQL)'
                 : 'Author a test first, then generate detection stubs'
             }
@@ -479,6 +402,15 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
         onClose={() => setDetectionOpen(false)}
         inputs={inputs}
         darkMode={darkMode}
+      />
+
+      {/* Contribute-to-AT modal */}
+      <ContributeModal
+        open={contributeOpen}
+        onClose={() => setContributeOpen(false)}
+        inputs={inputs}
+        formattedYaml={formatted_yaml}
+        lintErrorCount={errorCount}
       />
 
       {/* Body */}
