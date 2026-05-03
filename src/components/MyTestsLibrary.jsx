@@ -132,6 +132,7 @@ export default function MyTestsLibrary({ open, onClose, currentInputs, onLoad, f
                     fullWidth
                     size="small"
                     variant="filled"
+                    hiddenLabel
                     placeholder="Save current form as..."
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
@@ -174,21 +175,26 @@ export default function MyTestsLibrary({ open, onClose, currentInputs, onLoad, f
                                     background: 'var(--glass-strong)',
                                 }}
                                 secondaryAction={
-                                    <Box sx={{ display: 'flex' }}>
-                                        <Tooltip title="Rename">
-                                            <IconButton size="small" onClick={() => startRename(item)}>
-                                                <EditRoundedIcon sx={{ fontSize: 14 }} />
-                                            </IconButton>
-                                        </Tooltip>
-                                        <Tooltip title="Delete">
-                                            <IconButton size="small" onClick={() => handleDelete(item)}>
-                                                <DeleteOutlineRoundedIcon sx={{ fontSize: 14 }} />
-                                            </IconButton>
-                                        </Tooltip>
-                                    </Box>
+                                    editingId === item.id ? null : (
+                                        <Box sx={{ display: 'flex' }}>
+                                            <Tooltip title="Rename">
+                                                <IconButton size="small" onClick={() => startRename(item)}>
+                                                    <EditRoundedIcon sx={{ fontSize: 14 }} />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Delete">
+                                                <IconButton size="small" onClick={() => handleDelete(item)}>
+                                                    <DeleteOutlineRoundedIcon sx={{ fontSize: 14 }} />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </Box>
+                                    )
                                 }
                             >
-                                <ListItemButton onClick={() => handleLoad(item)} sx={{ pr: 7, py: 1 }}>
+                                <ListItemButton
+                                    onClick={() => handleLoad(item)}
+                                    sx={{ pr: editingId === item.id ? 1 : 7, py: 1 }}
+                                >
                                     {editingId === item.id ? (
                                         <TextField
                                             value={editName}
