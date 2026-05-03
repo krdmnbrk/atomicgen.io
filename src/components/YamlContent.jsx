@@ -3,7 +3,6 @@ import yaml from 'js-yaml';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Box from '@mui/material/Box';
-import Alert from '@mui/material/Alert';
 import Paper from '@mui/material/Paper';
 import Tooltip from '@mui/material/Tooltip';
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
@@ -13,6 +12,9 @@ import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import TerminalRoundedIcon from '@mui/icons-material/TerminalRounded';
 import Editor from './Editor';
+import LintPanel from './LintPanel';
+import useLintFindings from '../hooks/useLintFindings';
+import { summarizeFindings } from '../utils/atLinter';
 
 const downloadStringAsFile = (filename, content) => {
   const blob = new Blob([content], { type: 'text/plain' });
@@ -126,42 +128,35 @@ function dumpAtomicYaml(wrapper) {
 function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErrors, setChanged, changed, onReset }) {
   const [formatted_yaml, setFormattedYaml] = React.useState(null);
   const [showContent, setShowContent] = React.useState(false);
-  const [showValidationErrors, setShowValidationErrors] = React.useState(false);
+  const [showLintPanel, setShowLintPanel] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
 
-  // Map validation error message → form input id, used by jump-to-field
-  const ERROR_TO_FIELD_ID = {
-    'MITRE ATT&CK technique (T####)': 'attack_technique',
-    'Technique display name': 'display_name',
-    'Test name': 'name',
-    'Test description': 'description',
-    'Supported platforms': 'supported-platforms',
-    'Attack command': 'attack-command-editor',
-    'Attack executor name': 'attack_executor_select',
-  };
+  // Unified lint findings (required-field validation + AT-spec lint).
+  const lintFindings = useLintFindings(inputs, validationErrors);
+  const lintCounts = summarizeFindings(lintFindings);
 
-  const jumpToFirstError = () => {
-    if (!validationErrors.length) return;
-    const first = validationErrors[0];
-    const id = ERROR_TO_FIELD_ID[first];
-    if (id) {
-      const el = document.getElementById(id);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        // Focus if input
-        if (typeof el.focus === 'function' && el.tagName === 'INPUT') {
-          setTimeout(() => el.focus(), 400);
-        }
+  const jumpToField = React.useCallback((fieldId) => {
+    if (!fieldId) return;
+    const el = document.getElementById(fieldId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (typeof el.focus === 'function' && el.tagName === 'INPUT') {
+        setTimeout(() => el.focus(), 400);
       }
     }
-  };
+  }, []);
 
-  const showValidationErrorHandler = () => {
-    if (validationErrors.length > 0) {
-      setShowValidationErrors(true);
+  const jumpToFirstError = React.useCallback(() => {
+    const first = lintFindings.find((f) => f.severity === 'error');
+    if (first?.field) jumpToField(first.field);
+  }, [lintFindings, jumpToField]);
+
+  const showValidationErrorHandler = React.useCallback(() => {
+    if (lintCounts.error > 0) {
+      setShowLintPanel(true);
       jumpToFirstError();
     }
-  };
+  }, [lintCounts.error, jumpToFirstError]);
 
   useEffect(() => {
     const wrapper = cleanObject(buildTechniqueWrapper(inputs));
@@ -177,10 +172,10 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
         return `${indent}${key}: |\n${inner}`;
       }
     ));
-    if (validationErrors.length === 0) {
-      setShowValidationErrors(false);
+    if (lintFindings.length === 0) {
+      setShowLintPanel(false);
     }
-  }, [inputs, validationErrors.length]);
+  }, [inputs, lintFindings.length]);
 
   useEffect(() => {
     setShowContent(updated && formatted_yaml !== '{}\n');
@@ -251,8 +246,43 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
     }
   };
 
-  const errorCount = validationErrors.length;
+  const errorCount = lintCounts.error;
+  const warningCount = lintCounts.warning;
+  const infoCount = lintCounts.info;
   const hasErrors = errorCount > 0;
+  const hasWarnings = !hasErrors && warningCount > 0;
+  const hasInfo = !hasErrors && !hasWarnings && infoCount > 0;
+  const badgeColor = hasErrors ? 'error.main' : hasWarnings ? 'warning.main' : hasInfo ? 'info.main' : 'success.main';
+  const badgeBg = hasErrors
+    ? 'rgba(229, 72, 77, 0.10)'
+    : hasWarnings
+    ? 'rgba(245, 183, 78, 0.10)'
+    : hasInfo
+    ? 'rgba(111, 169, 255, 0.10)'
+    : 'rgba(77, 221, 150, 0.10)';
+  const badgeBorder = hasErrors
+    ? 'rgba(229, 72, 77, 0.30)'
+    : hasWarnings
+    ? 'rgba(245, 183, 78, 0.30)'
+    : hasInfo
+    ? 'rgba(111, 169, 255, 0.30)'
+    : 'rgba(77, 221, 150, 0.30)';
+  const badgeGlow = hasErrors ? '#E5484D' : hasWarnings ? '#F5B74E' : hasInfo ? '#6FA9FF' : '#4DDD96';
+  const totalFindings = errorCount + warningCount + infoCount;
+  const badgeText = hasErrors
+    ? `${errorCount} error${errorCount === 1 ? '' : 's'}${warningCount ? ` · ${warningCount} warn` : ''}`
+    : hasWarnings
+    ? `${warningCount} warning${warningCount === 1 ? '' : 's'}`
+    : hasInfo
+    ? `${infoCount} hint${infoCount === 1 ? '' : 's'}`
+    : 'Ready to PR';
+  const badgeTextShort = hasErrors
+    ? `${errorCount}E${warningCount ? `/${warningCount}W` : ''}`
+    : hasWarnings
+    ? `${warningCount}W`
+    : hasInfo
+    ? `${infoCount}i`
+    : 'OK';
 
   const iconBtnSx = {
     width: 30,
@@ -321,39 +351,47 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
             <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>YAML</Box>
           </Box>
           {showContent && (
+          <Tooltip
+            title={
+              totalFindings === 0
+                ? 'No lint issues — looks contribution-ready'
+                : `${errorCount} error · ${warningCount} warning · ${infoCount} hint — click to view`
+            }
+            placement="bottom"
+          >
           <Box
             sx={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 0.5,
               fontSize: 11,
-              color: hasErrors ? 'error.main' : 'success.main',
-              background: hasErrors ? 'rgba(229, 72, 77, 0.10)' : 'rgba(77, 221, 150, 0.10)',
+              color: badgeColor,
+              background: badgeBg,
               border: '1px solid',
-              borderColor: hasErrors ? 'rgba(229, 72, 77, 0.30)' : 'rgba(77, 221, 150, 0.30)',
+              borderColor: badgeBorder,
               px: 1,
               py: 0.4,
               borderRadius: 12,
               backdropFilter: 'blur(12px)',
-              cursor: hasErrors ? 'pointer' : 'default',
+              cursor: totalFindings > 0 ? 'pointer' : 'default',
               whiteSpace: 'nowrap',
               flexShrink: 0,
             }}
-            onClick={hasErrors ? showValidationErrorHandler : undefined}
+            onClick={totalFindings > 0 ? () => setShowLintPanel((v) => !v) : undefined}
           >
             <Box
               sx={{
                 width: 6,
                 height: 6,
                 borderRadius: '50%',
-                background: hasErrors ? 'error.main' : 'success.main',
-                boxShadow: `0 0 6px ${hasErrors ? '#E5484D' : '#4DDD96'}`,
+                background: badgeColor,
+                boxShadow: `0 0 6px ${badgeGlow}`,
               }}
             />
-            {hasErrors
-              ? `${errorCount} error${errorCount === 1 ? '' : 's'}`
-              : <Box component="span"><Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>0 errors</Box><Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>OK</Box></Box>}
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>{badgeText}</Box>
+            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>{badgeTextShort}</Box>
           </Box>
+          </Tooltip>
           )}
         </Box>
         <Box sx={{ display: 'flex', gap: 0.5 }}>
@@ -409,20 +447,9 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
         </Box>
       </Box>
 
-      {/* Validation alert */}
-      {showValidationErrors && (
-        <Box sx={{ p: 2, pb: 0 }}>
-          <Alert variant="outlined" severity="warning" sx={{ borderRadius: 2 }}>
-            <Typography component="span" sx={{ fontWeight: 500 }}>
-              Some required fields are missing.
-            </Typography>
-            <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5 }}>
-              {[...new Set(validationErrors)].map((err, i) => (
-                <li key={i}>{err}</li>
-              ))}
-            </Box>
-          </Alert>
-        </Box>
+      {/* Lint findings panel */}
+      {showLintPanel && lintFindings.length > 0 && (
+        <LintPanel findings={lintFindings} onJumpToField={jumpToField} />
       )}
 
       {/* Body */}
