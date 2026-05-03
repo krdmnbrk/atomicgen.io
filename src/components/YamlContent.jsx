@@ -15,8 +15,17 @@ import CallSplitRoundedIcon from '@mui/icons-material/CallSplitRounded';
 import IosShareRoundedIcon from '@mui/icons-material/IosShareRounded';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import BookmarkAddRoundedIcon from '@mui/icons-material/BookmarkAddRounded';
+import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded';
+import SaveAltRoundedIcon from '@mui/icons-material/SaveAltRounded';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Button from '@mui/material/Button';
+import Divider from '@mui/material/Divider';
+import { keyframes } from '@mui/system';
 import Editor from './Editor';
 import LintPanel from './LintPanel';
 import DetectionExportModal from './DetectionExportModal';
@@ -30,6 +39,12 @@ import { summarizeFindings } from '../utils/atLinter';
 import { inputsToYaml } from '../utils/atomicYaml';
 import { encodeStateToUrl } from '../utils/shareUrl';
 
+const pulseKeyframe = keyframes`
+  0%   { box-shadow: 0 0 0 0 rgba(229, 72, 77, 0.55); }
+  60%  { box-shadow: 0 0 0 9px rgba(229, 72, 77, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(229, 72, 77, 0); }
+`;
+
 const downloadStringAsFile = (filename, content) => {
   const blob = new Blob([content], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
@@ -42,7 +57,7 @@ const downloadStringAsFile = (filename, content) => {
   URL.revokeObjectURL(url);
 };
 
-function YamlContent({ darkMode, inputs, setInputs, setLoadedSource, loadedSource, updated, base, validationErrors, setChanged, changed, onReset, originalSnapshot, originalGuid }) {
+function YamlContent({ darkMode, inputs, setInputs, setLoadedSource, loadedSource, updated, base, validationErrors, setChanged, changed, onReset, originalSnapshot, originalGuid, actionHandlersRef }) {
   const [formatted_yaml, setFormattedYaml] = React.useState(null);
   const [showContent, setShowContent] = React.useState(false);
   const [showLintPanel, setShowLintPanel] = React.useState(false);
@@ -113,6 +128,31 @@ function YamlContent({ darkMode, inputs, setInputs, setLoadedSource, loadedSourc
   const [activeTab, setActiveTab] = React.useState('yaml');
   const [copiedSnippet, setCopiedSnippet] = React.useState(false);
   const [copiedShare, setCopiedShare] = React.useState(false);
+  // Save dropdown menu anchor
+  const [saveMenuAnchor, setSaveMenuAnchor] = React.useState(null);
+
+  // Expose modal openers to App (used by Command Palette).
+  React.useEffect(() => {
+    if (actionHandlersRef) {
+      actionHandlersRef.current = {
+        openContribute: () => setContributeOpen(true),
+        openDetection: () => setDetectionOpen(true),
+        openVariants: () => setVariantsOpen(true),
+      };
+    }
+  }, [actionHandlersRef]);
+  // Lint badge first-time pulse (K3)
+  const [pulseLint, setPulseLint] = React.useState(false);
+  const prevErrorCountRef = React.useRef(0);
+  React.useEffect(() => {
+    if (lintCounts.error > 0 && prevErrorCountRef.current === 0) {
+      setPulseLint(true);
+      const t = setTimeout(() => setPulseLint(false), 2400);
+      prevErrorCountRef.current = lintCounts.error;
+      return () => clearTimeout(t);
+    }
+    prevErrorCountRef.current = lintCounts.error;
+  }, [lintCounts.error]);
   const copyShareLink = async () => {
     try {
       const url = encodeStateToUrl(inputs);
@@ -214,21 +254,6 @@ function YamlContent({ darkMode, inputs, setInputs, setLoadedSource, loadedSourc
     ? `${infoCount}i`
     : 'OK';
 
-  const iconBtnSx = {
-    width: 30,
-    height: 30,
-    border: '1px solid var(--glass-stroke)',
-    borderRadius: 1.25,
-    color: 'text.secondary',
-    transition: 'all 0.12s',
-    '&:hover': {
-      background: 'var(--glass-strong)',
-      color: 'text.primary',
-      borderColor: 'var(--glass-stroke-strong)',
-    },
-    '&.Mui-disabled': { opacity: 0.4 },
-  };
-
   return (
     <Paper
       elevation={0}
@@ -290,6 +315,8 @@ function YamlContent({ darkMode, inputs, setInputs, setLoadedSource, loadedSourc
             placement="bottom"
           >
           <Box
+            role={totalFindings > 0 ? 'button' : undefined}
+            tabIndex={totalFindings > 0 ? 0 : -1}
             sx={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -306,8 +333,25 @@ function YamlContent({ darkMode, inputs, setInputs, setLoadedSource, loadedSourc
               cursor: totalFindings > 0 ? 'pointer' : 'default',
               whiteSpace: 'nowrap',
               flexShrink: 0,
+              transition: 'all 0.14s',
+              animation: pulseLint ? `${pulseKeyframe} 1.2s ease-out 2` : 'none',
+              '&:hover': totalFindings > 0 ? {
+                borderColor: badgeColor,
+                background: badgeBg,
+                filter: 'brightness(1.15)',
+              } : {},
+              '&:focus-visible': totalFindings > 0 ? {
+                outline: 'none',
+                boxShadow: `0 0 0 3px ${badgeBg}`,
+              } : {},
             }}
             onClick={totalFindings > 0 ? () => setShowLintPanel((v) => !v) : undefined}
+            onKeyDown={(e) => {
+              if (totalFindings > 0 && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                setShowLintPanel((v) => !v);
+              }
+            }}
           >
             <Box
               sx={{
@@ -320,166 +364,249 @@ function YamlContent({ darkMode, inputs, setInputs, setLoadedSource, loadedSourc
             />
             <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>{badgeText}</Box>
             <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>{badgeTextShort}</Box>
+            {totalFindings > 0 && (
+              <KeyboardArrowDownRoundedIcon
+                sx={{
+                  fontSize: 14,
+                  ml: 0.25,
+                  transition: 'transform 0.18s',
+                  transform: showLintPanel ? 'rotate(180deg)' : 'rotate(0deg)',
+                }}
+              />
+            )}
           </Box>
           </Tooltip>
           )}
         </Box>
-        <Box sx={{ display: 'flex', gap: 0.5 }}>
-          {(() => {
-            // Only block contribution when the test was loaded verbatim from
-            // the AT repo and hasn't been edited. AI / sample / upload /
-            // library / shared / draft loads are user-authored intent.
-            const unchangedFromOriginal =
-              loadedSource && loadedSource.type === 'repo' &&
-              !!originalSnapshot && formatted_yaml === originalSnapshot;
-            const tooltip = !showContent
-              ? 'Author a test first, then contribute'
-              : !inputs.attack_technique
-              ? 'Set an ATT&CK technique to enable contribute flow'
-              : unchangedFromOriginal
-              ? 'No changes vs the loaded atomic-red-team test — edit something before contributing'
-              : 'Contribute this test to atomic-red-team (open pre-filled fork on GitHub)';
-            return (
-              <Tooltip title={tooltip}>
+        {/* Action group — minimal ghost buttons + Contribute primary CTA */}
+        {(() => {
+          // Shared minimal/ghost button style. Border + background appear
+          // on hover only; default state is just label + icon.
+          const ghostBtnSx = {
+            textTransform: 'none',
+            fontWeight: 500,
+            fontSize: 12.5,
+            borderRadius: 1.25,
+            color: 'text.secondary',
+            px: 1,
+            py: 0.35,
+            minWidth: 0,
+            border: '1px solid transparent',
+            transition: 'all 0.12s',
+            '& .MuiButton-startIcon': { mr: 0.5 },
+            '& .MuiButton-endIcon':   { ml: 0.25 },
+            '&:hover': {
+              color: 'text.primary',
+              background: 'var(--glass-strong)',
+              border: '1px solid var(--glass-stroke-strong)',
+            },
+            '&.Mui-disabled': {
+              color: 'var(--text-faint)',
+              opacity: 0.5,
+            },
+          };
+          const ghostIconSx = {
+            width: 28,
+            height: 28,
+            color: 'text.secondary',
+            border: '1px solid transparent',
+            borderRadius: 1.25,
+            transition: 'all 0.12s',
+            '&:hover': {
+              color: 'text.primary',
+              background: 'var(--glass-strong)',
+              border: '1px solid var(--glass-stroke-strong)',
+            },
+            '&.Mui-disabled': { opacity: 0.4 },
+          };
+          return (
+            <Box sx={{ display: 'flex', gap: 0.25, alignItems: 'center' }}>
+              <Tooltip title="Save / export — Download · Copy · Share · Library">
+                <span>
+                  <Button
+                    disabled={!showContent}
+                    onClick={(e) => setSaveMenuAnchor(e.currentTarget)}
+                    size="small"
+                    startIcon={<SaveAltRoundedIcon sx={{ fontSize: 15 }} />}
+                    endIcon={<KeyboardArrowDownRoundedIcon sx={{ fontSize: 14 }} />}
+                    aria-label="Save and export menu"
+                    sx={ghostBtnSx}
+                  >
+                    <Box component="span" sx={{ display: { xs: 'none', md: 'inline' } }}>Save</Box>
+                  </Button>
+                </span>
+              </Tooltip>
+
+              <Tooltip
+                title={
+                  showContent
+                    ? 'Generate a Sigma rule with AI · convert to any SIEM via sigconverter.io'
+                    : 'Author a test first, then generate detection'
+                }
+              >
+                <span>
+                  <Button
+                    disabled={!showContent}
+                    onClick={() => setDetectionOpen(true)}
+                    size="small"
+                    startIcon={<RadarRoundedIcon sx={{ fontSize: 15 }} />}
+                    aria-label="Generate Sigma rule"
+                    sx={ghostBtnSx}
+                  >
+                    <Box component="span" sx={{ display: { xs: 'none', md: 'inline' } }}>Detection</Box>
+                  </Button>
+                </span>
+              </Tooltip>
+
+              <Tooltip
+                title={
+                  showContent
+                    ? inputs.executor && inputs.executor.command
+                      ? 'Suggest variants — alternative implementations of the same technique'
+                      : 'Add an attack command first, then suggest variants'
+                    : 'Author a test first, then suggest variants'
+                }
+              >
+                <span>
+                  <Button
+                    disabled={!showContent || !inputs.executor || !inputs.executor.command}
+                    onClick={() => setVariantsOpen(true)}
+                    size="small"
+                    startIcon={<AutoAwesomeRoundedIcon sx={{ fontSize: 15 }} />}
+                    aria-label="Suggest variants"
+                    sx={ghostBtnSx}
+                  >
+                    <Box component="span" sx={{ display: { xs: 'none', md: 'inline' } }}>Variants</Box>
+                  </Button>
+                </span>
+              </Tooltip>
+
+              <Tooltip title="Reset form (undo for 10s)">
                 <span>
                   <IconButton
-                    disabled={
-                      !showContent || !inputs.attack_technique || unchangedFromOriginal
-                    }
-                    onClick={() => setContributeOpen(true)}
-                    sx={{
-                      ...iconBtnSx,
-                      color: 'primary.main',
-                      borderColor: 'rgba(255,92,57,0.40)',
-                      '&:hover': {
-                        background: 'var(--accent-soft)',
-                        color: 'primary.main',
-                        borderColor: 'primary.main',
-                      },
-                    }}
-                    aria-label="Contribute to atomic-red-team"
+                    disabled={!showContent}
+                    onClick={resetButtonHandle}
+                    sx={ghostIconSx}
+                    aria-label="Reset form"
                   >
-                    <CallSplitRoundedIcon sx={{ fontSize: 16 }} />
+                    <RestartAltRoundedIcon sx={{ fontSize: 16 }} />
                   </IconButton>
                 </span>
               </Tooltip>
-            );
-          })()}
-          <Tooltip
-            title={
-              showContent
-                ? 'Generate detection rule stubs (Sigma · KQL · SPL · EQL)'
-                : 'Author a test first, then generate detection stubs'
-            }
+
+              {(() => {
+                const unchangedFromOriginal =
+                  loadedSource && loadedSource.type === 'repo' &&
+                  !!originalSnapshot && formatted_yaml === originalSnapshot;
+                const disabled = !showContent || !inputs.attack_technique || unchangedFromOriginal;
+                const tooltip = !showContent
+                  ? 'Author a test first, then contribute'
+                  : !inputs.attack_technique
+                  ? 'Set an ATT&CK technique to enable contribute flow'
+                  : unchangedFromOriginal
+                  ? 'No changes vs the loaded atomic-red-team test — edit something before contributing'
+                  : 'Contribute this test to atomic-red-team (open pre-filled fork on GitHub)';
+                return (
+                  <Tooltip title={tooltip}>
+                    <span>
+                      <Button
+                        disabled={disabled}
+                        onClick={() => setContributeOpen(true)}
+                        size="small"
+                        variant="contained"
+                        color="primary"
+                        startIcon={<CallSplitRoundedIcon sx={{ fontSize: 15 }} />}
+                        aria-label="Contribute to atomic-red-team"
+                        sx={{
+                          ml: 0.5,
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          fontSize: 12.5,
+                          borderRadius: 1.25,
+                          px: 1.25,
+                          py: 0.4,
+                          minWidth: 0,
+                          boxShadow: '0 4px 14px -4px rgba(255, 92, 57, 0.45)',
+                          '& .MuiButton-startIcon': { mr: 0.5 },
+                          '&.Mui-disabled': {
+                            background: 'var(--glass-strong)',
+                            color: 'var(--text-faint)',
+                            boxShadow: 'none',
+                          },
+                        }}
+                      >
+                        <Box component="span" sx={{ display: { xs: 'none', md: 'inline' } }}>Contribute</Box>
+                      </Button>
+                    </span>
+                  </Tooltip>
+                );
+              })()}
+            </Box>
+          );
+        })()}
+
+        {/* Save menu */}
+        <Menu
+          anchorEl={saveMenuAnchor}
+          open={Boolean(saveMenuAnchor)}
+          onClose={() => setSaveMenuAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          slotProps={{ paper: { sx: { mt: 0.5, minWidth: 240 } } }}
+        >
+          <MenuItem
+            onClick={() => { setSaveMenuAnchor(null); downloadButtonHandle(); }}
           >
-            <span>
-              <IconButton
-                disabled={!showContent}
-                onClick={() => setDetectionOpen(true)}
-                sx={iconBtnSx}
-                aria-label="Generate detection rule stubs"
-              >
-                <RadarRoundedIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip
-            title={
-              showContent
-                ? inputs.executor && inputs.executor.command
-                  ? 'Suggest variants — alternative implementations of the same technique'
-                  : 'Add an attack command first, then ask for variants'
-                : 'Author a test first, then ask for variants'
-            }
+            <ListItemIcon><DownloadRoundedIcon fontSize="small" /></ListItemIcon>
+            <ListItemText
+              primary={`Download YAML${changed ? ' *' : ''}`}
+              secondary={inputs.name ? `${inputs.name.replace(/ /g, '_').toLowerCase()}.yaml` : 'name required'}
+              primaryTypographyProps={{ fontSize: 13 }}
+              secondaryTypographyProps={{ fontSize: 10.5, sx: { fontFamily: "'JetBrains Mono', monospace" } }}
+            />
+            <Box component="span" sx={{ ml: 1, fontSize: 10, color: 'var(--text-faint)', fontFamily: "'JetBrains Mono', monospace" }}>⌘S</Box>
+          </MenuItem>
+          <MenuItem onClick={() => { setSaveMenuAnchor(null); copyButtonHandler(); }}>
+            <ListItemIcon>{copied ? <CheckRoundedIcon fontSize="small" sx={{ color: 'success.main' }} /> : <ContentCopyRoundedIcon fontSize="small" />}</ListItemIcon>
+            <ListItemText
+              primary={copied ? 'Copied!' : `Copy YAML${changed ? ' *' : ''}`}
+              primaryTypographyProps={{ fontSize: 13 }}
+            />
+          </MenuItem>
+          <MenuItem onClick={() => { setSaveMenuAnchor(null); copyShareLink(); }}>
+            <ListItemIcon>{copiedShare ? <CheckRoundedIcon fontSize="small" sx={{ color: 'success.main' }} /> : <IosShareRoundedIcon fontSize="small" />}</ListItemIcon>
+            <ListItemText
+              primary={copiedShare ? 'Link copied!' : 'Copy share link'}
+              secondary="state encoded in URL"
+              primaryTypographyProps={{ fontSize: 13 }}
+              secondaryTypographyProps={{ fontSize: 10.5 }}
+            />
+          </MenuItem>
+          <Divider sx={{ my: 0.5 }} />
+          <MenuItem onClick={() => { setSaveMenuAnchor(null); saveCurrentToLibrary(); }}>
+            <ListItemIcon>{savedToLib ? <CheckRoundedIcon fontSize="small" sx={{ color: 'success.main' }} /> : <BookmarkAddRoundedIcon fontSize="small" />}</ListItemIcon>
+            <ListItemText
+              primary={savedToLib ? 'Saved to library!' : 'Save to My Tests'}
+              secondary="local browser only"
+              primaryTypographyProps={{ fontSize: 13 }}
+              secondaryTypographyProps={{ fontSize: 10.5 }}
+            />
+            <Box component="span" sx={{ ml: 1, fontSize: 10, color: 'var(--text-faint)', fontFamily: "'JetBrains Mono', monospace" }}>⌘⇧S</Box>
+          </MenuItem>
+          <MenuItem
+            disabled={!invokeAtomicSnippet}
+            onClick={() => { setSaveMenuAnchor(null); copyInvokeSnippet(); }}
           >
-            <span>
-              <IconButton
-                disabled={!showContent || !inputs.executor || !inputs.executor.command}
-                onClick={() => setVariantsOpen(true)}
-                sx={iconBtnSx}
-                aria-label="Suggest variants"
-              >
-                <AutoAwesomeRoundedIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip
-            title={
-              copiedSnippet
-                ? 'Copied!'
-                : invokeAtomicSnippet
-                ? `Copy: ${invokeAtomicSnippet}`
-                : 'Set ATT&CK technique to enable Invoke-AtomicTest snippet'
-            }
-          >
-            <span>
-              <IconButton
-                disabled={!invokeAtomicSnippet}
-                onClick={copyInvokeSnippet}
-                sx={iconBtnSx}
-                aria-label="Copy Invoke-AtomicTest snippet"
-              >
-                {copiedSnippet ? (
-                  <CheckRoundedIcon sx={{ fontSize: 16, color: 'success.main' }} />
-                ) : (
-                  <TerminalRoundedIcon sx={{ fontSize: 16 }} />
-                )}
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title={savedToLib ? 'Saved to library!' : 'Save current test to My Tests library'}>
-            <span>
-              <IconButton
-                disabled={!showContent}
-                onClick={saveCurrentToLibrary}
-                sx={iconBtnSx}
-                aria-label="Save to My Tests library"
-              >
-                {savedToLib ? (
-                  <CheckRoundedIcon sx={{ fontSize: 16, color: 'success.main' }} />
-                ) : (
-                  <BookmarkAddRoundedIcon sx={{ fontSize: 16 }} />
-                )}
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title={`Download${changed ? ' *' : ''}`}>
-            <span>
-              <IconButton disabled={!showContent} onClick={downloadButtonHandle} sx={iconBtnSx} aria-label="Download YAML">
-                <DownloadRoundedIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title={copied ? 'Copied!' : `Copy${changed ? ' *' : ''}`}>
-            <span>
-              <IconButton disabled={!showContent} onClick={copyButtonHandler} sx={iconBtnSx}>
-                {copied ? (
-                  <CheckRoundedIcon sx={{ fontSize: 16, color: 'success.main' }} />
-                ) : (
-                  <ContentCopyRoundedIcon sx={{ fontSize: 16 }} />
-                )}
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title={copiedShare ? 'Share link copied!' : 'Copy a shareable link (state encoded in URL)'}>
-            <span>
-              <IconButton disabled={!showContent} onClick={copyShareLink} sx={iconBtnSx} aria-label="Copy share link">
-                {copiedShare ? (
-                  <CheckRoundedIcon sx={{ fontSize: 16, color: 'success.main' }} />
-                ) : (
-                  <IosShareRoundedIcon sx={{ fontSize: 16 }} />
-                )}
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title="Reset">
-            <span>
-              <IconButton disabled={!showContent} onClick={resetButtonHandle} sx={iconBtnSx}>
-                <RestartAltRoundedIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-            </span>
-          </Tooltip>
-        </Box>
+            <ListItemIcon>{copiedSnippet ? <CheckRoundedIcon fontSize="small" sx={{ color: 'success.main' }} /> : <TerminalRoundedIcon fontSize="small" />}</ListItemIcon>
+            <ListItemText
+              primary={copiedSnippet ? 'Snippet copied!' : 'Copy Invoke-AtomicTest'}
+              secondary={invokeAtomicSnippet || 'set technique to enable'}
+              primaryTypographyProps={{ fontSize: 13 }}
+              secondaryTypographyProps={{ fontSize: 10.5, sx: { fontFamily: "'JetBrains Mono', monospace" } }}
+            />
+          </MenuItem>
+        </Menu>
+
       </Box>
 
       {/* Tabs (only when content is shown) */}

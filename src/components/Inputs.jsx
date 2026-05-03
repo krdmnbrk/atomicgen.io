@@ -18,6 +18,7 @@ import {
     AccordionDetails,
     Tooltip,
     IconButton,
+    Collapse,
 } from '@mui/material';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -104,11 +105,16 @@ function Inputs({
     loadedSource,
     setLoadedSource,
     onOpenLibrary,
+    onOpenSettings,
 }) {
     // AI prompt search query — lifted here so it can count as "dirty" for
     // overwrite confirmations and be cleared when a test is loaded.
     const [aiQuery, setAiQuery] = React.useState('');
     const dirty = changed || aiQuery.trim().length > 0;
+
+    // Identity section is collapsible — defaults to OPEN. User can toggle
+    // by clicking the section header; we never auto-collapse.
+    const [identityExpanded, setIdentityExpanded] = React.useState(true);
     const setInputsAndClearQuery = React.useCallback((next) => {
         setInputs(next);
         setAiQuery('');
@@ -274,6 +280,7 @@ function Inputs({
                 setLoadedSource={setLoadedSource}
                 query={aiQuery}
                 setQuery={setAiQuery}
+                onOpenSettings={onOpenSettings}
             />
 
             {/* Source provenance badge */}
@@ -366,25 +373,56 @@ function Inputs({
                 </Box>
             )}
 
-            {/* ─── IDENTITY ─── */}
+            {/* ─── IDENTITY (collapsible — auto-collapses once TID + name + platform are set) ─── */}
             <Paper elevation={0} sx={glassSection}>
-                <SectionTitle
-                    icon={<InfoOutlinedIcon sx={{ fontSize: 16 }} />}
-                    meta={
-                        inputs.attack_technique || (inputs.supported_platforms || []).length
-                            ? [
-                                  inputs.attack_technique,
-                                  (inputs.supported_platforms || []).length
-                                      ? `${inputs.supported_platforms.length} platform${inputs.supported_platforms.length === 1 ? '' : 's'}`
-                                      : null,
-                              ]
-                                  .filter(Boolean)
-                                  .join(' · ')
-                            : null
-                    }
+                <Box
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setIdentityExpanded((v) => !v)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setIdentityExpanded((v) => !v);
+                        }
+                    }}
+                    sx={{
+                        cursor: 'pointer',
+                        outline: 'none',
+                        borderRadius: 1.5,
+                        '&:focus-visible': { boxShadow: '0 0 0 2px var(--accent)' },
+                    }}
                 >
-                    Identity
-                </SectionTitle>
+                    <SectionTitle
+                        icon={<InfoOutlinedIcon sx={{ fontSize: 16 }} />}
+                        meta={
+                            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+                                {(() => {
+                                    const parts = [
+                                        inputs.attack_technique,
+                                        inputs.name && !identityExpanded
+                                            ? `"${inputs.name.length > 28 ? inputs.name.slice(0, 28) + '…' : inputs.name}"`
+                                            : null,
+                                        (inputs.supported_platforms || []).length
+                                            ? `${inputs.supported_platforms.length} platform${inputs.supported_platforms.length === 1 ? '' : 's'}`
+                                            : null,
+                                    ].filter(Boolean);
+                                    return parts.length > 0 ? <Box component="span">{parts.join(' · ')}</Box> : null;
+                                })()}
+                                <ExpandMoreRoundedIcon
+                                    sx={{
+                                        fontSize: 18,
+                                        color: 'text.secondary',
+                                        transition: 'transform 0.18s',
+                                        transform: identityExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                                    }}
+                                />
+                            </Box>
+                        }
+                    >
+                        Identity
+                    </SectionTitle>
+                </Box>
+                <Collapse in={identityExpanded} timeout={180}>
                 <Box sx={{ mb: 2 }}>
                     <TechniquePicker
                         value={inputs.attack_technique || ''}
@@ -451,39 +489,8 @@ function Inputs({
                         onChange={handleChangeText}
                         sx={inputSx}
                     />
-                    {/* Lint-style writing hints */}
-                    {(() => {
-                        const desc = (inputs.description || '').trim();
-                        if (!desc) return null;
-                        const hints = [];
-                        if (desc.length < 30) hints.push('Add more detail about adversary intent and the expected artifact.');
-                        if (!/\b(verify|verif|check|expected|upon execution|after execution)/i.test(desc)) {
-                            hints.push('Consider adding a verification cue (e.g., "Verify with: …", "Upon execution …").');
-                        }
-                        if (inputs.executor?.command && /#\{[^}]+\}/.test(inputs.executor.command) && !desc.includes('#{')) {
-                            // not a strong rule — skip
-                        }
-                        if (hints.length === 0) return null;
-                        return (
-                            <Box
-                                sx={{
-                                    mt: 0.75,
-                                    fontSize: 11,
-                                    color: 'var(--text-faint)',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: 0.25,
-                                }}
-                            >
-                                {hints.map((h, i) => (
-                                    <Box key={i} sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.75 }}>
-                                        <Box component="span" sx={{ color: 'warning.main' }}>ⓘ</Box>
-                                        <span>{h}</span>
-                                    </Box>
-                                ))}
-                            </Box>
-                        );
-                    })()}
+                    {/* Description quality hints surface in the unified Lint panel
+                        (rule AT014) — no duplicate inline UI. */}
                 </Box>
                 <Box>
                     <FormControl required size="small" fullWidth variant="filled" sx={inputSx}>
@@ -568,6 +575,7 @@ function Inputs({
                         </IconButton>
                     </Tooltip>
                 </Box>
+                </Collapse>
             </Paper>
 
             {/* ─── EXECUTION ─── */}
