@@ -12,8 +12,32 @@ import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import { ConfirmProvider } from './components/ConfirmDialog';
 import MyTestsLibrary from './components/MyTestsLibrary';
+import AiSettingsDialog from './components/Inputs/AiSettingsDialog';
+import HelpSidebar from './components/HelpSidebar';
+import CommandPalette from './components/CommandPalette';
+import StatusBar from './components/StatusBar';
+import OnboardingTour from './components/OnboardingTour';
+import useLlmSettings from './hooks/useLlmSettings';
+import useLocalLibrary from './hooks/useLocalLibrary';
+import useKeyboardShortcuts from './hooks/useKeyboardShortcuts';
+import useLintFindings from './hooks/useLintFindings';
+import { summarizeFindings } from './utils/atLinter';
 import { inputsToYaml } from './utils/atomicYaml';
-import { decodeStateFromHash, clearShareHash } from './utils/shareUrl';
+import { encodeStateToUrl, decodeStateFromHash, clearShareHash } from './utils/shareUrl';
+
+import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
+import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
+import IosShareRoundedIcon from '@mui/icons-material/IosShareRounded';
+import BookmarkAddRoundedIcon from '@mui/icons-material/BookmarkAddRounded';
+import LibraryBooksRoundedIcon from '@mui/icons-material/LibraryBooksRounded';
+import CallSplitRoundedIcon from '@mui/icons-material/CallSplitRounded';
+import RadarRoundedIcon from '@mui/icons-material/RadarRounded';
+import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
+import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
+import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded';
+import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
+import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded';
+import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded';
 
 const executor_names = [
   "powershell",
@@ -163,6 +187,19 @@ function App() {
     setInputs(libInputs);
     setLoadedSource({ type: 'library' });
   };
+  // AI settings dialog (lifted from AiAssistant so navbar / palette can open it too)
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const llmSettings = useLlmSettings();
+  // Help sidebar
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpInitialTab, setHelpInitialTab] = useState(0);
+  const openHelp = (tab = 0) => { setHelpInitialTab(tab); setHelpOpen(true); };
+  // Command palette (Cmd+K)
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  // Library hook for save action + count
+  const { save: saveCurrentToLibraryAction } = useLocalLibrary();
+  // Track last-saved-at for status bar
+  const [lastSavedAt, setLastSavedAt] = useState(null);
   // Reset undo (10s window)
   const [undoSnack, setUndoSnack] = useState({ open: false, snapshot: null });
   const undoTimerRef = useRef(null);
@@ -327,6 +364,114 @@ function App() {
       setValidationErrors([]);
     }
   }, [updated, inputs]);
+
+  // ─────────────────────────────────────────────────────────────────
+  // Global actions used by Command Palette + Keyboard Shortcuts
+  // ─────────────────────────────────────────────────────────────────
+
+  // Lint findings at App level so the StatusBar can show them too.
+  const appLintFindings = useLintFindings(inputs, validationErrors, originalGuid);
+  const appLintCounts = summarizeFindings(appLintFindings);
+  const hasFormContent = updated && JSON.stringify(inputs) !== JSON.stringify(base);
+
+  const downloadCurrentYaml = () => {
+    if (!hasFormContent) return;
+    const yamlStr = inputsToYaml(inputs);
+    const name = (inputs.name || '').trim();
+    if (!name) {
+      alert('Set a Test name before downloading.');
+      return;
+    }
+    const filename = name.replace(/ /g, '_').toLowerCase() + '.yaml';
+    const blob = new Blob([yamlStr], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setLastSavedAt(Date.now());
+    setChanged(false);
+  };
+
+  const copyCurrentYaml = async () => {
+    if (!hasFormContent) return;
+    try {
+      await navigator.clipboard.writeText(inputsToYaml(inputs));
+    } catch { /* noop */ }
+  };
+
+  const copyCurrentShareLink = async () => {
+    if (!hasFormContent) return;
+    try {
+      await navigator.clipboard.writeText(encodeStateToUrl(inputs));
+    } catch { /* noop */ }
+  };
+
+  const saveCurrentToLibrary = () => {
+    if (!hasFormContent) return;
+    saveCurrentToLibraryAction(inputs.name || '', inputs);
+    setLastSavedAt(Date.now());
+  };
+
+  const focusAiInput = () => {
+    const el = document.querySelector('input[placeholder*="Describe a test"]');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => el.focus(), 250);
+    }
+  };
+
+  // Refs into child components — used by command palette to trigger
+  // modals that live inside YamlContent (Detection / Variants / Contribute).
+  const yamlContentApiRef = useRef({});
+
+  // Build palette commands list — recomputed each render so disabled state
+  // and labels stay current.
+  const paletteCommands = React.useMemo(() => {
+    const cmds = [];
+    cmds.push(
+      { id: 'help', label: 'Help & docs',         hint: 'AT format · lint rules · shortcuts',     group: 'Navigate', icon: HelpOutlineRoundedIcon, onRun: () => openHelp(0) },
+      { id: 'shortcuts', label: 'Keyboard shortcuts', hint: 'Show all shortcuts',                  group: 'Navigate', icon: HelpOutlineRoundedIcon, keys: ['?'], onRun: () => openHelp(2) },
+      { id: 'settings', label: 'Settings — AI provider · API key', hint: 'BYOK', group: 'Navigate', icon: TuneRoundedIcon, onRun: () => setSettingsOpen(true) },
+      { id: 'library', label: 'My Tests library', hint: 'browse saved tests',                       group: 'Navigate', icon: LibraryBooksRoundedIcon, onRun: () => setLibraryOpen(true) },
+      { id: 'theme', label: darkMode ? 'Switch to light theme' : 'Switch to dark theme',          group: 'Navigate', icon: darkMode ? LightModeRoundedIcon : DarkModeRoundedIcon, onRun: () => { const next = !darkMode; setDarkMode(next); try { localStorage.setItem('darkMode', String(next)); } catch {} } },
+    );
+    cmds.push(
+      { id: 'focus-ai', label: 'Focus AI prompt', hint: 'jump to the AI input',                    group: 'Author',   icon: AutoAwesomeRoundedIcon, keys: ['⌘', '/'], onRun: focusAiInput },
+    );
+    cmds.push(
+      { id: 'download', label: 'Download YAML',    hint: hasFormContent ? `${(inputs.name || 'untitled').replace(/ /g,'_').toLowerCase()}.yaml` : 'author a test first', group: 'Save / export', icon: DownloadRoundedIcon, keys: ['⌘', 'S'], disabled: !hasFormContent, disabledReason: 'no test', onRun: downloadCurrentYaml },
+      { id: 'copy', label: 'Copy YAML',            hint: 'clipboard',                              group: 'Save / export', icon: ContentCopyRoundedIcon, disabled: !hasFormContent, disabledReason: 'no test', onRun: copyCurrentYaml },
+      { id: 'share', label: 'Copy share link',     hint: 'state encoded in URL',                   group: 'Save / export', icon: IosShareRoundedIcon, disabled: !hasFormContent, disabledReason: 'no test', onRun: copyCurrentShareLink },
+      { id: 'lib-save', label: 'Save to My Tests library', hint: 'local browser only',             group: 'Save / export', icon: BookmarkAddRoundedIcon, keys: ['⌘', '⇧', 'S'], disabled: !hasFormContent, disabledReason: 'no test', onRun: saveCurrentToLibrary },
+    );
+    cmds.push(
+      { id: 'contribute', label: 'Contribute to atomic-red-team…', hint: 'open pre-filled fork',  group: 'Ship',     icon: CallSplitRoundedIcon, disabled: !hasFormContent || !inputs.attack_technique, disabledReason: !inputs.attack_technique ? 'set TID first' : 'no test', onRun: () => yamlContentApiRef.current.openContribute && yamlContentApiRef.current.openContribute() },
+      { id: 'detection', label: 'Generate detection rules…',       hint: 'AI · Sigma + Splunk',   group: 'Ship',     icon: RadarRoundedIcon, disabled: !hasFormContent, disabledReason: 'no test', onRun: () => yamlContentApiRef.current.openDetection && yamlContentApiRef.current.openDetection() },
+      { id: 'variants', label: 'Suggest variants…',                  hint: 'AI · alternative implementations', group: 'Ship', icon: AutoAwesomeRoundedIcon, disabled: !hasFormContent || !inputs.executor || !inputs.executor.command, disabledReason: 'add a command first', onRun: () => yamlContentApiRef.current.openVariants && yamlContentApiRef.current.openVariants() },
+    );
+    cmds.push(
+      { id: 'reset', label: 'Reset form',          hint: 'undo available for 10s',                 group: 'Danger',   icon: RestartAltRoundedIcon, disabled: !hasFormContent, disabledReason: 'nothing to reset', onRun: resetWithUndo },
+    );
+    return cmds;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasFormContent, inputs, darkMode]);
+
+  // Global keyboard shortcuts.
+  useKeyboardShortcuts({
+    'mod+k':       (e) => { e.preventDefault(); setPaletteOpen((v) => !v); },
+    'mod+s':       (e) => { e.preventDefault(); downloadCurrentYaml(); },
+    'mod+shift+s': (e) => { e.preventDefault(); saveCurrentToLibrary(); },
+    'mod+/':       (e) => { e.preventDefault(); focusAiInput(); },
+    '?':           (e) => { e.preventDefault(); openHelp(2); },
+    'escape':      () => {
+      if (paletteOpen) setPaletteOpen(false);
+      else if (helpOpen) setHelpOpen(false);
+    },
+  });
 
   // Liquid Glass — Dark
   const darkTheme = createTheme({
@@ -592,8 +737,10 @@ function App() {
       <Navbar
         darkMode={darkMode}
         setDarkMode={setDarkMode}
+        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenHelp={() => openHelp(0)}
       />
-      <Box id="main-content" component="main" sx={{ p: { xs: 2, md: 3 }, maxWidth: 1500, mx: 'auto' }}>
+      <Box id="main-content" component="main" sx={{ p: { xs: 2, md: 3 }, pb: { xs: 6, md: 6 }, maxWidth: 1500, mx: 'auto' }}>
         <Grid container spacing={{ xs: 2, md: 3 }}>
           <Grid size={isPortrait ? 12 : 6}>
             <Inputs
@@ -612,6 +759,8 @@ function App() {
               loadedSource={loadedSource}
               setLoadedSource={setLoadedSource}
               onOpenLibrary={() => setLibraryOpen(true)}
+              onOpenSettings={() => setSettingsOpen(true)}
+              settingsOpen={settingsOpen}
             />
           </Grid>
           <Grid size={isPortrait ? 12 : 6}>
@@ -631,6 +780,7 @@ function App() {
               onReset={resetWithUndo}
               originalSnapshot={originalSnapshot}
               originalGuid={originalGuid}
+              actionHandlersRef={yamlContentApiRef}
             />
           </Grid>
         </Grid>
@@ -714,6 +864,43 @@ function App() {
         onLoad={loadFromLibrary}
         formIsModified={changed}
       />
+
+      <AiSettingsDialog
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        providerId={llmSettings.providerId}
+        setProviderId={llmSettings.setProviderId}
+        apiKey={llmSettings.apiKey}
+        setApiKey={llmSettings.setApiKey}
+        model={llmSettings.model}
+        setModel={llmSettings.setModel}
+        clearKey={llmSettings.clearKey}
+        provider={llmSettings.provider}
+      />
+
+      <HelpSidebar
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        initialTab={helpInitialTab}
+      />
+
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        commands={paletteCommands}
+      />
+
+      <StatusBar
+        loadedSource={loadedSource}
+        changed={changed}
+        errorCount={appLintCounts.error}
+        warningCount={appLintCounts.warning}
+        infoCount={appLintCounts.info}
+        lastSavedAt={lastSavedAt}
+        onOpenCommandPalette={() => setPaletteOpen(true)}
+      />
+
+      <OnboardingTour />
 
       </ConfirmProvider>
     </ThemeProvider>

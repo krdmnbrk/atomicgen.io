@@ -9,6 +9,8 @@ import Tooltip from '@mui/material/Tooltip';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
@@ -37,10 +39,13 @@ function summary(item) {
 
 export default function MyTestsLibrary({ open, onClose, currentInputs, onLoad, formIsModified }) {
     const { items, save, remove, rename } = useLocalLibrary();
-    const confirm = useConfirm();
     const [newName, setNewName] = React.useState('');
     const [editingId, setEditingId] = React.useState(null);
     const [editName, setEditName] = React.useState('');
+    // Undo snackbar — keeps the deleted entry around for 8 seconds.
+    const [undo, setUndo] = React.useState({ open: false, item: null });
+    const undoTimerRef = React.useRef(null);
+    const confirm = useConfirm();
 
     React.useEffect(() => {
         if (open) setNewName(currentInputs?.name || '');
@@ -67,17 +72,29 @@ export default function MyTestsLibrary({ open, onClose, currentInputs, onLoad, f
         onClose();
     };
 
-    const handleDelete = async (item) => {
-        const ok = await confirm({
-            title: 'Delete saved test?',
-            message: `This permanently removes "${item.name}" from your local library.`,
-            confirmText: 'Delete',
-            cancelText: 'Keep',
-            severity: 'warning',
-        });
-        if (!ok) return;
+    const handleDelete = (item) => {
+        // Optimistic delete — keep snapshot for 8s undo. Lighter than a
+        // confirm modal for an action with a built-in escape hatch.
         remove(item.id);
+        setUndo({ open: true, item });
+        if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+        undoTimerRef.current = setTimeout(() => {
+            setUndo({ open: false, item: null });
+        }, 8000);
     };
+
+    const undoDelete = () => {
+        if (undo.item) {
+            // Restore via save (gets a new id but same name + inputs).
+            save(undo.item.name, undo.item.inputs);
+        }
+        if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+        setUndo({ open: false, item: null });
+    };
+
+    React.useEffect(() => () => {
+        if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    }, []);
 
     const startRename = (item) => {
         setEditingId(item.id);
@@ -247,6 +264,26 @@ export default function MyTestsLibrary({ open, onClose, currentInputs, onLoad, f
                     </List>
                 )}
             </Box>
+        <Snackbar
+            open={undo.open}
+            autoHideDuration={8000}
+            onClose={() => setUndo({ open: false, item: null })}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            sx={{ bottom: { xs: 36, sm: 36 } }}
+        >
+            <Alert
+                severity="success"
+                variant="outlined"
+                sx={{ borderRadius: 2, backdropFilter: 'blur(20px)', background: 'var(--glass-modal)' }}
+                action={
+                    <Button color="primary" size="small" onClick={undoDelete}>
+                        Undo
+                    </Button>
+                }
+            >
+                Removed "{undo.item ? undo.item.name : ''}"
+            </Alert>
+        </Snackbar>
         </Drawer>
     );
 }

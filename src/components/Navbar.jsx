@@ -1,18 +1,16 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ReactComponent as LogoIcon } from '../assets/images/logo.svg';
 import {
   AppBar,
   Toolbar,
   Typography,
-  Button,
-  Menu,
-  MenuItem,
   Box,
   IconButton,
   Link,
 } from '@mui/material';
-import LaunchIcon from '@mui/icons-material/Launch';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
+import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded';
 import Tooltip from '@mui/material/Tooltip';
 import {
   GitHub as GitHubIcon,
@@ -20,20 +18,7 @@ import {
   DarkModeOutlined as DarkModeOutlinedIcon,
 } from '@mui/icons-material';
 
-function Navbar({ darkMode, setDarkMode }) {
-  const [anchorEl, setAnchorEl] = useState(null);
-
-  const usefulLinks = [
-    { text: 'Atomic Specs', url: 'https://github.com/redcanaryco/atomic-red-team/wiki/Sample-Spec' },
-    { text: 'Contributing Guide', url: 'https://github.com/redcanaryco/atomic-red-team/wiki/Contributing' },
-    { text: 'Atomic Red Team', url: 'https://atomicredteam.io' },
-    { text: 'Invoke-AtomicRedTeam', url: 'https://www.atomicredteam.io/invoke-atomicredteam' },
-    { text: 'Slack Workspace', url: 'https://slack.atomicredteam.io/' },
-    { text: 'AttackRuleMap', url: 'https://attackrulemap.com/' },
-  ];
-
-  const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
-  const handleMenuClose = () => setAnchorEl(null);
+function Navbar({ darkMode, setDarkMode, onOpenSettings, onOpenHelp }) {
 
   const handleThemeToggle = () => {
     const newMode = !darkMode;
@@ -158,68 +143,36 @@ function Navbar({ darkMode, setDarkMode }) {
               <LockOutlinedIcon sx={{ fontSize: 14 }} />
             </Box>
           </Tooltip>
-          <Button
-            color="inherit"
-            aria-controls="useful-links-menu"
-            aria-haspopup="true"
-            onClick={handleMenuOpen}
-            sx={{
-              display: { xs: 'none', sm: 'inline-flex' },
-              textTransform: 'none',
-              borderRadius: 2.5,
-              px: 1.75,
-              py: 1,
-              '&:hover': { background: 'var(--glass-strong)' },
-            }}
-          >
-            <Typography fontSize={15}>Related Links</Typography>
-          </Button>
-          <Tooltip title="Related Links" placement="bottom">
-            <IconButton
-              aria-controls="useful-links-menu"
-              aria-haspopup="true"
-              onClick={handleMenuOpen}
-              color="inherit"
-              sx={{
-                display: { xs: 'inline-flex', sm: 'none' },
-                borderRadius: 2.5,
-                '&:hover': { background: 'var(--glass-strong)' },
-              }}
-            >
-              <LaunchIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Menu
-            id="useful-links-menu"
-            anchorEl={anchorEl}
-            keepMounted
-            open={Boolean(anchorEl)}
-            onClose={handleMenuClose}
-            slotProps={{
-              paper: {
-                sx: {
-                  background: 'var(--glass-strong)',
-                  backdropFilter: 'blur(24px) saturate(180%)',
-                  WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-                  border: '1px solid var(--glass-stroke)',
-                  mt: 1,
-                },
-              },
-            }}
-          >
-            {usefulLinks.map((link, index) => (
-              <MenuItem
-                key={index}
-                component="a"
-                href={link.url}
-                target="_blank"
-                onClick={handleMenuClose}
+          {onOpenHelp && (
+            <Tooltip title="Help & docs · keyboard shortcuts" placement="bottom">
+              <IconButton
+                onClick={onOpenHelp}
+                color="inherit"
+                aria-label="Open help & docs"
+                sx={{
+                  borderRadius: 2.5,
+                  '&:hover': { background: 'var(--glass-strong)' },
+                }}
               >
-                {link.text}
-                <LaunchIcon fontSize="small" style={{ marginLeft: '5px' }} />
-              </MenuItem>
-            ))}
-          </Menu>
+                <HelpOutlineRoundedIcon fontSize="medium" />
+              </IconButton>
+            </Tooltip>
+          )}
+          {onOpenSettings && (
+            <Tooltip title="Settings — AI provider · API key · model" placement="bottom">
+              <IconButton
+                onClick={onOpenSettings}
+                color="inherit"
+                aria-label="Open settings"
+                sx={{
+                  borderRadius: 2.5,
+                  '&:hover': { background: 'var(--glass-strong)' },
+                }}
+              >
+                <TuneRoundedIcon fontSize="medium" />
+              </IconButton>
+            </Tooltip>
+          )}
 
           <IconButton
             component="a"

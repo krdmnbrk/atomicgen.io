@@ -16,17 +16,18 @@ import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import useAtomicIndex from '../../hooks/useAtomicIndex';
 import useLlmSettings from '../../hooks/useLlmSettings';
+import useLocalLibrary from '../../hooks/useLocalLibrary';
+import BookmarksRoundedIcon from '@mui/icons-material/BookmarksRounded';
 import { useConfirm } from '../ConfirmDialog';
 import { mergeTechniqueAndTestIntoForm } from '../../utils/aiResponseValidator';
 import AiPromptDialog from './AiPromptDialog';
-import AiSettingsDialog from './AiSettingsDialog';
 
 const REPO_BASE = 'https://raw.githubusercontent.com/redcanaryco/atomic-red-team/master/atomics';
 const techniqueYamlUrl = (tid) => `${REPO_BASE}/${tid}/${tid}.yaml`;
 const MAX_SUGGESTIONS = 5;
 const DEBOUNCE_MS = 200;
 
-export default function AiAssistant({ base, setInputs, setChanged, changed, darkMode, setLoadedSource, query: queryProp, setQuery: setQueryProp }) {
+export default function AiAssistant({ base, setInputs, setChanged, changed, darkMode, setLoadedSource, query: queryProp, setQuery: setQueryProp, onOpenSettings }) {
     const [internalQuery, setInternalQuery] = React.useState('');
     const query = queryProp !== undefined ? queryProp : internalQuery;
     const setQuery = setQueryProp || setInternalQuery;
@@ -34,11 +35,11 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
     const [loadingTest, setLoadingTest] = React.useState(false);
     const [error, setError] = React.useState(null);
     const [aiOpen, setAiOpen] = React.useState(false);
-    const [settingsOpen, setSettingsOpen] = React.useState(false);
 
     const { data, loading: indexLoading, error: indexError } = useAtomicIndex();
     const settings = useLlmSettings();
     const confirm = useConfirm();
+    const { items: libraryItems } = useLocalLibrary();
 
     React.useEffect(() => {
         const t = setTimeout(() => setDebouncedQuery(query.trim()), DEBOUNCE_MS);
@@ -65,6 +66,37 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
         if (!fuse || debouncedQuery.length < 2) return [];
         return fuse.search(debouncedQuery, { limit: MAX_SUGGESTIONS }).map((r) => r.item);
     }, [fuse, debouncedQuery]);
+
+    // Library matches for the same query — surface saved tests inline so
+    // the search input is one unified entry point (Y1).
+    const librarySuggestions = React.useMemo(() => {
+        const q = debouncedQuery.toLowerCase();
+        if (q.length < 2 || !Array.isArray(libraryItems)) return [];
+        return libraryItems
+            .filter((item) => {
+                const hay = `${item.name || ''} ${item.inputs?.attack_technique || ''} ${item.inputs?.executor?.name || ''}`.toLowerCase();
+                return hay.includes(q);
+            })
+            .slice(0, 3);
+    }, [libraryItems, debouncedQuery]);
+
+    const loadLibrarySuggestion = async (item) => {
+        if (changed) {
+            const ok = await confirm({
+                title: 'Replace current test?',
+                message: `Loading "${item.name}" from your library will overwrite the test you have in the form.`,
+                confirmText: 'Load',
+                cancelText: 'Keep current',
+                severity: 'warning',
+            });
+            if (!ok) return;
+        }
+        setError(null);
+        if (item.inputs) setInputs({ ...base, ...item.inputs });
+        if (setLoadedSource) setLoadedSource({ type: 'library' });
+        setChanged(false);
+        setQuery('');
+    };
 
     const loadSuggestion = async (item) => {
         if (changed) {
@@ -196,7 +228,7 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
 
                 <IconButton
                     size="small"
-                    onClick={() => setSettingsOpen(true)}
+                    onClick={onOpenSettings}
                     aria-label="AI settings"
                     sx={{
                         width: 36,
@@ -258,7 +290,7 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
                 </Alert>
             )}
 
-            {suggestions.length > 0 && (
+            {(suggestions.length > 0 || librarySuggestions.length > 0) && (
                 <Paper
                     elevation={0}
                     sx={{
@@ -272,11 +304,58 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
                         boxShadow: 'var(--shadow-glow)',
                     }}
                 >
+                    {librarySuggestions.length > 0 && (
+                        <>
+                            <Box sx={{ px: 2, pt: 1.5, pb: 0.75 }}>
+                                <Typography sx={{ fontSize: 11, fontWeight: 600, color: 'text.secondary', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                                    From your library
+                                </Typography>
+                            </Box>
+                            <List dense disablePadding>
+                                {librarySuggestions.map((item) => (
+                                    <ListItem key={`lib-${item.id}`} disablePadding>
+                                        <ListItemButton
+                                            onClick={() => loadLibrarySuggestion(item)}
+                                            sx={{
+                                                px: 2,
+                                                py: 1.1,
+                                                borderTop: '1px solid var(--glass-stroke)',
+                                                '&:hover': { background: 'var(--glass-strong)' },
+                                            }}
+                                        >
+                                            <Box sx={{
+                                                mr: 1.5, minWidth: 88,
+                                                display: 'inline-flex', alignItems: 'center', gap: 0.5,
+                                                background: 'var(--glass-strong)',
+                                                color: 'text.secondary',
+                                                border: '1px solid var(--glass-stroke-strong)',
+                                                fontSize: 11, fontWeight: 500,
+                                                px: 1, py: 0.4, borderRadius: 12,
+                                                fontFamily: "'JetBrains Mono', monospace",
+                                            }}>
+                                                <BookmarksRoundedIcon sx={{ fontSize: 12 }} />
+                                                {item.inputs?.attack_technique || 'saved'}
+                                            </Box>
+                                            <ListItemText
+                                                primary={item.name}
+                                                secondary={`${item.inputs?.executor?.name || 'unknown'} · saved ${new Date(item.savedAt).toLocaleDateString()}`}
+                                                primaryTypographyProps={{ fontSize: 14 }}
+                                                secondaryTypographyProps={{ fontSize: 12, color: 'var(--text-faint)' }}
+                                            />
+                                        </ListItemButton>
+                                    </ListItem>
+                                ))}
+                            </List>
+                        </>
+                    )}
+
+                    {suggestions.length > 0 && (
                     <Box sx={{ px: 2, pt: 1.5, pb: 0.75 }}>
                         <Typography sx={{ fontSize: 11, fontWeight: 600, color: 'text.secondary', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                            Existing tests that may cover this
+                            Atomic-red-team tests that may cover this
                         </Typography>
                     </Box>
+                    )}
                     <List dense disablePadding>
                         {suggestions.map((s, i) => (
                             <ListItem key={`${s.tid}-${s.testNum}-${i}`} disablePadding>
@@ -360,20 +439,8 @@ export default function AiAssistant({ base, setInputs, setChanged, changed, dark
                 setChanged={setChanged}
                 techniques={data?.techniques || []}
                 settings={settings}
-                onOpenSettings={() => setSettingsOpen(true)}
+                onOpenSettings={onOpenSettings}
                 setLoadedSource={setLoadedSource}
-            />
-            <AiSettingsDialog
-                open={settingsOpen}
-                onClose={() => setSettingsOpen(false)}
-                providerId={settings.providerId}
-                setProviderId={settings.setProviderId}
-                apiKey={settings.apiKey}
-                setApiKey={settings.setApiKey}
-                model={settings.model}
-                setModel={settings.setModel}
-                clearKey={settings.clearKey}
-                provider={settings.provider}
             />
         </Box>
     );
