@@ -11,8 +11,10 @@ import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import TerminalRoundedIcon from '@mui/icons-material/TerminalRounded';
+import RadarRoundedIcon from '@mui/icons-material/RadarRounded';
 import Editor from './Editor';
 import LintPanel from './LintPanel';
+import DetectionExportModal from './DetectionExportModal';
 import useLintFindings from '../hooks/useLintFindings';
 import { summarizeFindings } from '../utils/atLinter';
 
@@ -202,6 +204,7 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
     downloadStringAsFile(filename, formatted_yaml);
   };
 
+  const [detectionOpen, setDetectionOpen] = React.useState(false);
   const [copiedSnippet, setCopiedSnippet] = React.useState(false);
   const invokeAtomicSnippet = (() => {
     const tid = (inputs.attack_technique || '').trim();
@@ -397,6 +400,24 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
         <Box sx={{ display: 'flex', gap: 0.5 }}>
           <Tooltip
             title={
+              showContent
+                ? 'Generate detection rule stubs (Sigma · KQL · SPL · EQL)'
+                : 'Author a test first, then generate detection stubs'
+            }
+          >
+            <span>
+              <IconButton
+                disabled={!showContent}
+                onClick={() => setDetectionOpen(true)}
+                sx={iconBtnSx}
+                aria-label="Generate detection rule stubs"
+              >
+                <RadarRoundedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip
+            title={
               copiedSnippet
                 ? 'Copied!'
                 : invokeAtomicSnippet
@@ -451,6 +472,14 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
       {showLintPanel && lintFindings.length > 0 && (
         <LintPanel findings={lintFindings} onJumpToField={jumpToField} />
       )}
+
+      {/* Detection rule stubs modal */}
+      <DetectionExportModal
+        open={detectionOpen}
+        onClose={() => setDetectionOpen(false)}
+        inputs={inputs}
+        darkMode={darkMode}
+      />
 
       {/* Body */}
       <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
