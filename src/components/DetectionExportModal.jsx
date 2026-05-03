@@ -1,10 +1,9 @@
 import React from 'react';
+import yaml from 'js-yaml';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
-import Tabs from '@mui/material/Tabs';
-import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
@@ -13,6 +12,9 @@ import Tooltip from '@mui/material/Tooltip';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import Chip from '@mui/material/Chip';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import ListItemText from '@mui/material/ListItemText';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
@@ -20,9 +22,13 @@ import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import RadarRoundedIcon from '@mui/icons-material/RadarRounded';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded';
+import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
+import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded';
 import Editor from './Editor';
+import ModelBadge from './ModelBadge';
 import useLlmSettings from '../hooks/useLlmSettings';
-import { generateDetectionRules } from '../utils/llm/detectionRules';
+import { generateSigmaRule, quickValidateSigma } from '../utils/llm/detectionRules';
+import { buildSigconverterUrl, SIGCONVERTER_TARGETS } from '../utils/sigconverter';
 
 function downloadString(filename, content) {
     const blob = new Blob([content], { type: 'text/plain' });
@@ -36,39 +42,28 @@ function downloadString(filename, content) {
     URL.revokeObjectURL(url);
 }
 
-const FORMATS = [
-    { id: 'sigma',  label: 'Sigma',  ext: 'yml', mode: 'yaml' },
-    { id: 'splunk', label: 'Splunk', ext: 'spl', mode: 'sh'   },
-];
-
 export default function DetectionExportModal({ open, onClose, inputs, darkMode }) {
     const settings = useLlmSettings();
     const provider = settings.provider;
     const apiKey = settings.apiKey;
     const model = settings.model || provider?.defaultModel;
 
-    const [tab, setTab] = React.useState(0);
     const [state, setState] = React.useState('idle'); // 'idle' | 'loading' | 'ready' | 'refused' | 'error'
     const [result, setResult] = React.useState(null);
     const [error, setError] = React.useState(null);
     const [refusalReason, setRefusalReason] = React.useState(null);
     const [copied, setCopied] = React.useState(false);
+    const [convertAnchor, setConvertAnchor] = React.useState(null);
 
     React.useEffect(() => {
-        // Reset on close — explainer-first when reopened.
         if (!open) {
             setState('idle');
             setResult(null);
             setError(null);
             setRefusalReason(null);
-            setTab(0);
             setCopied(false);
         }
     }, [open]);
-
-    React.useEffect(() => {
-        setCopied(false);
-    }, [tab]);
 
     const run = React.useCallback(async () => {
         if (!provider || !apiKey) {
@@ -81,7 +76,7 @@ export default function DetectionExportModal({ open, onClose, inputs, darkMode }
         setRefusalReason(null);
         setResult(null);
         try {
-            const out = await generateDetectionRules({
+            const out = await generateSigmaRule({
                 providerId: provider.id,
                 apiKey,
                 model,
@@ -89,12 +84,12 @@ export default function DetectionExportModal({ open, onClose, inputs, darkMode }
             });
             if (out?.action === 'refuse') {
                 setState('refused');
-                setRefusalReason(out.reason || 'Model declined to generate rules.');
+                setRefusalReason(out.reason || 'Model declined to generate the rule.');
                 return;
             }
-            if (!out?.sigma || !out?.splunk) {
+            if (!out?.sigma) {
                 setState('error');
-                setError('Model returned no rules — try again.');
+                setError('Model returned no rule — try again.');
                 return;
             }
             setResult(out);
@@ -105,14 +100,15 @@ export default function DetectionExportModal({ open, onClose, inputs, darkMode }
         }
     }, [provider, apiKey, model, inputs]);
 
-    const current = result
-        ? { ...FORMATS[tab], content: tab === 0 ? result.sigma : result.splunk }
-        : null;
+    const validation = React.useMemo(
+        () => (result?.sigma ? quickValidateSigma(result.sigma, yaml) : null),
+        [result]
+    );
 
     const handleCopy = async () => {
-        if (!current) return;
+        if (!result?.sigma) return;
         try {
-            await navigator.clipboard.writeText(current.content);
+            await navigator.clipboard.writeText(result.sigma);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         } catch {
@@ -121,11 +117,18 @@ export default function DetectionExportModal({ open, onClose, inputs, darkMode }
     };
 
     const handleDownload = () => {
-        if (!current) return;
+        if (!result?.sigma) return;
         const baseName = (inputs.name || 'detection')
             .replace(/[^a-zA-Z0-9_-]+/g, '_')
             .toLowerCase();
-        downloadString(`${baseName}.${current.ext}`, current.content);
+        downloadString(`${baseName}.yml`, result.sigma);
+    };
+
+    const openConvertTarget = (target) => {
+        if (!result?.sigma) return;
+        const url = buildSigconverterUrl(result.sigma, target.backend, target.format);
+        if (url) window.open(url, '_blank', 'noopener,noreferrer');
+        setConvertAnchor(null);
     };
 
     const hasCommand = !!(
@@ -149,10 +152,10 @@ export default function DetectionExportModal({ open, onClose, inputs, darkMode }
                 <RadarRoundedIcon sx={{ color: 'primary.main' }} />
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography sx={{ fontSize: 16, fontWeight: 600 }}>
-                        Detection rules — Sigma + Splunk
+                        Detection rule — Sigma
                     </Typography>
                     <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-                        AI-generated starter rules derived from your atomic test.
+                        AI-generated from your atomic test. Convert to any SIEM via sigconverter.io.
                     </Typography>
                 </Box>
                 <IconButton onClick={onClose} size="small">
@@ -163,15 +166,18 @@ export default function DetectionExportModal({ open, onClose, inputs, darkMode }
             <DialogContent sx={{ p: 2, minHeight: 400 }}>
                 {!hasCommand && (
                     <Alert severity="info" variant="outlined" sx={{ mb: 2, borderRadius: 2 }}>
-                        Add an attack command (or manual steps) in Execution before generating rules.
+                        Add an attack command (or manual steps) in Execution before generating the rule.
                     </Alert>
                 )}
 
                 {state === 'idle' && (
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, py: 1 }}>
                         <Typography sx={{ fontSize: 13, color: 'text.primary', lineHeight: 1.55 }}>
-                            atomicgen.io will ask the configured AI provider to generate two detection rules
-                            for the current test:
+                            atomicgen.io will ask the configured AI provider to generate a Sigma rule for the
+                            current test, then build a one-click link to{' '}
+                            <Box component="strong" sx={{ color: 'primary.main' }}>sigconverter.io</Box>{' '}
+                            so you can convert it to any SIEM (Splunk · Sentinel · Elastic · QRadar · …) in
+                            the browser.
                         </Typography>
                         <Box
                             component="ul"
@@ -185,21 +191,16 @@ export default function DetectionExportModal({ open, onClose, inputs, darkMode }
                             }}
                         >
                             <li>
-                                <Box component="strong" sx={{ color: 'text.primary' }}>Sigma rule</Box> —
-                                vendor-neutral YAML; convert to most SIEMs via{' '}
-                                <Box component="code" sx={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                                    sigconverter.io
-                                </Box>{' '}
-                                or pySigma.
+                                <Box component="strong" sx={{ color: 'text.primary' }}>Sigma</Box> — vendor-neutral YAML
+                                with proper logsource taxonomy, anchored selectors, real falsepositives,
+                                and severity.
                             </li>
                             <li>
-                                <Box component="strong" sx={{ color: 'text.primary' }}>Splunk SPL</Box> —
-                                Sysmon-aware search query (EID 1 for Windows process events, auditd /
-                                Sysmon-for-Linux for Linux/macOS).
+                                Selectors anchor on the <strong>actual</strong> image / cmdline / registry paths
+                                from your test &mdash; not generic patterns.
                             </li>
                             <li>
-                                Selectors anchor on the <strong>actual</strong> image / cmdline / registry
-                                paths from your test &mdash; not generic patterns.
+                                Validates locally with js-yaml + a Sigma spec sanity check before showing.
                             </li>
                             <li>
                                 Uses your <strong>BYOK</strong> {provider?.name || 'AI'} key — one API call,
@@ -208,33 +209,24 @@ export default function DetectionExportModal({ open, onClose, inputs, darkMode }
                         </Box>
                         {(!provider || !apiKey) && (
                             <Alert severity="warning" variant="outlined" sx={{ borderRadius: 2 }}>
-                                Configure your AI provider key first (settings) before generating rules.
+                                Configure your AI provider key first (settings) before generating.
                             </Alert>
                         )}
                     </Box>
                 )}
 
                 {state === 'loading' && (
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: 1.5,
-                            py: 8,
-                        }}
-                    >
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5, py: 8 }}>
                         <CircularProgress size={20} />
                         <Typography fontSize={13} color="text.secondary">
-                            Asking {provider?.name || 'AI'} for Sigma + Splunk rules…
+                            Generating a Sigma rule…
                         </Typography>
+                        <ModelBadge providerName={provider?.name} model={model} sx={{ mt: 0.5 }} />
                     </Box>
                 )}
 
                 {state === 'error' && (
-                    <Alert severity="error" sx={{ borderRadius: 2 }}>
-                        {error}
-                    </Alert>
+                    <Alert severity="error" sx={{ borderRadius: 2 }}>{error}</Alert>
                 )}
 
                 {state === 'refused' && (
@@ -243,7 +235,7 @@ export default function DetectionExportModal({ open, onClose, inputs, darkMode }
                     </Alert>
                 )}
 
-                {state === 'ready' && current && (
+                {state === 'ready' && result?.sigma && (
                     <>
                         <Alert
                             severity="warning"
@@ -254,81 +246,64 @@ export default function DetectionExportModal({ open, onClose, inputs, darkMode }
                             <Typography component="span" sx={{ fontSize: 12.5, fontWeight: 500 }}>
                                 AI-generated &mdash; tune for your environment before deploying.
                             </Typography>
-                            <Typography
-                                component="div"
-                                sx={{ fontSize: 11.5, color: 'text.secondary', mt: 0.25 }}
-                            >
-                                These rules may contain inaccuracies. Review selectors, indices, source-types,
-                                and field names against your SIEM&rsquo;s schema. Test against known-bad and
-                                known-good telemetry before promotion.
+                            <Typography component="div" sx={{ fontSize: 11.5, color: 'text.secondary', mt: 0.25 }}>
+                                Review selectors, field names, and falsepositives against your SIEM&rsquo;s schema.
+                                Test against known-bad and known-good telemetry before promotion.
                             </Typography>
                         </Alert>
 
-                        <Box
-                            sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 1,
-                                mb: 1,
-                                flexWrap: 'wrap',
-                            }}
-                        >
-                            <Tabs
-                                value={tab}
-                                onChange={(_, v) => setTab(v)}
-                                sx={{ minHeight: 32, flex: 1 }}
-                            >
-                                {FORMATS.map((f) => (
-                                    <Tab
-                                        key={f.id}
-                                        label={f.label}
-                                        sx={{
-                                            textTransform: 'none',
-                                            minHeight: 32,
-                                            fontSize: 13,
-                                            py: 0.25,
-                                        }}
-                                    />
-                                ))}
-                            </Tabs>
-                            {tab === 0 && result.sigma_logsource && (
+                        {validation && validation.issues.length > 0 && (
+                            <Alert severity="error" variant="outlined" sx={{ borderRadius: 2, mb: 2 }}>
+                                <Typography sx={{ fontSize: 12.5, fontWeight: 600, mb: 0.5 }}>
+                                    Sigma sanity check found issues:
+                                </Typography>
+                                <Box component="ul" sx={{ m: 0, pl: 2, fontSize: 12 }}>
+                                    {validation.issues.map((iss, i) => (
+                                        <li key={i}>{iss}</li>
+                                    ))}
+                                </Box>
+                                <Typography sx={{ fontSize: 11, color: 'text.secondary', mt: 0.5 }}>
+                                    Re-roll, or fix manually before converting.
+                                </Typography>
+                            </Alert>
+                        )}
+
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+                            {result.sigma_logsource && (
                                 <Chip
                                     size="small"
                                     label={`logsource: ${result.sigma_logsource}`}
-                                    sx={{
-                                        fontSize: 10.5,
-                                        height: 20,
-                                        '& .MuiChip-label': { px: 0.6 },
-                                    }}
+                                    sx={{ fontSize: 10.5, height: 20, '& .MuiChip-label': { px: 0.6 } }}
                                 />
                             )}
-                            {tab === 0 && result.sigma_level && (
+                            {result.sigma_level && (
                                 <Chip
                                     size="small"
                                     label={`level: ${result.sigma_level}`}
-                                    color={
-                                        result.sigma_level === 'high' ||
-                                        result.sigma_level === 'critical'
-                                            ? 'warning'
-                                            : 'default'
-                                    }
+                                    color={result.sigma_level === 'high' || result.sigma_level === 'critical' ? 'warning' : 'default'}
                                     variant="outlined"
-                                    sx={{
-                                        fontSize: 10.5,
-                                        height: 20,
-                                        '& .MuiChip-label': { px: 0.6 },
-                                    }}
+                                    sx={{ fontSize: 10.5, height: 20, '& .MuiChip-label': { px: 0.6 } }}
+                                />
+                            )}
+                            {validation && validation.ok && (
+                                <Chip
+                                    size="small"
+                                    icon={<CheckRoundedIcon sx={{ fontSize: 12 }} />}
+                                    label="Sigma sanity check passed"
+                                    color="success"
+                                    variant="outlined"
+                                    sx={{ fontSize: 10.5, height: 20, '& .MuiChip-label': { px: 0.6 } }}
                                 />
                             )}
                         </Box>
 
                         <Editor
                             darkMode={darkMode}
-                            name={`detection-${current.id}`}
-                            value={current.content}
-                            mode={current.mode}
+                            name="detection-sigma"
+                            value={result.sigma}
+                            mode="yaml"
                             readOnly
-                            height="340px"
+                            height="320px"
                             highlightActiveLine={false}
                         />
                     </>
@@ -341,39 +316,50 @@ export default function DetectionExportModal({ open, onClose, inputs, darkMode }
                     py: 1.5,
                     gap: 1,
                     borderTop: '1px solid var(--glass-stroke)',
+                    flexWrap: 'wrap',
                 }}
             >
-                {state === 'ready' ? (
+                {state === 'ready' && result?.sigma ? (
                     <>
-                        <Button
-                            onClick={run}
-                            startIcon={<ReplayRoundedIcon />}
-                            sx={{ textTransform: 'none' }}
-                        >
+                        <Button onClick={run} startIcon={<ReplayRoundedIcon />} sx={{ textTransform: 'none' }}>
                             Re-roll
                         </Button>
                         <Box sx={{ flex: 1 }} />
-                        <Tooltip title={copied ? 'Copied!' : 'Copy to clipboard'}>
+                        <Tooltip title={copied ? 'Copied!' : 'Copy Sigma YAML'}>
                             <Button
                                 onClick={handleCopy}
                                 variant="outlined"
-                                startIcon={
-                                    copied ? <CheckRoundedIcon /> : <ContentCopyRoundedIcon />
-                                }
+                                startIcon={copied ? <CheckRoundedIcon /> : <ContentCopyRoundedIcon />}
                                 sx={{ textTransform: 'none', borderRadius: 2 }}
                             >
                                 {copied ? 'Copied' : 'Copy'}
                             </Button>
                         </Tooltip>
-                        <Button
-                            onClick={handleDownload}
-                            variant="contained"
-                            color="primary"
-                            startIcon={<DownloadRoundedIcon />}
-                            sx={{ textTransform: 'none', borderRadius: 2 }}
-                        >
-                            Download
-                        </Button>
+                        <Tooltip title="Download as .yml">
+                            <Button
+                                onClick={handleDownload}
+                                variant="outlined"
+                                startIcon={<DownloadRoundedIcon />}
+                                sx={{ textTransform: 'none', borderRadius: 2 }}
+                            >
+                                Download
+                            </Button>
+                        </Tooltip>
+                        <Tooltip title="Convert to your SIEM via sigconverter.io">
+                            <span>
+                                <Button
+                                    onClick={(e) => setConvertAnchor(e.currentTarget)}
+                                    disabled={!result?.sigma}
+                                    variant="contained"
+                                    color="primary"
+                                    startIcon={<OpenInNewRoundedIcon />}
+                                    endIcon={<KeyboardArrowDownRoundedIcon />}
+                                    sx={{ textTransform: 'none', borderRadius: 2 }}
+                                >
+                                    Convert to…
+                                </Button>
+                            </span>
+                        </Tooltip>
                     </>
                 ) : (
                     <>
@@ -390,7 +376,7 @@ export default function DetectionExportModal({ open, onClose, inputs, darkMode }
                             sx={{ textTransform: 'none', borderRadius: 2 }}
                         >
                             {state === 'idle'
-                                ? 'Generate rules'
+                                ? 'Generate rule'
                                 : state === 'loading'
                                 ? 'Generating…'
                                 : 'Try again'}
@@ -398,6 +384,78 @@ export default function DetectionExportModal({ open, onClose, inputs, darkMode }
                     </>
                 )}
             </DialogActions>
+
+            {/* Convert-to menu — vendor-grouped sigconverter.io targets */}
+            <Menu
+                anchorEl={convertAnchor}
+                open={Boolean(convertAnchor)}
+                onClose={() => setConvertAnchor(null)}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                slotProps={{
+                    paper: {
+                        sx: {
+                            mb: 0.75,
+                            minWidth: 320,
+                            maxHeight: '70vh',
+                        },
+                    },
+                }}
+            >
+                {SIGCONVERTER_TARGETS.map((row, idx) => {
+                    if (row.section) {
+                        return (
+                            <Box
+                                key={`s-${idx}`}
+                                sx={{
+                                    px: 1.75,
+                                    pt: idx === 0 ? 0.75 : 1.25,
+                                    pb: 0.4,
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                    letterSpacing: '0.10em',
+                                    textTransform: 'uppercase',
+                                    color: 'var(--text-faint)',
+                                    pointerEvents: 'none',
+                                }}
+                            >
+                                {row.section}
+                            </Box>
+                        );
+                    }
+                    const isGeneric = !row.backend;
+                    return (
+                        <MenuItem
+                            key={`t-${idx}`}
+                            onClick={() => openConvertTarget(row)}
+                            sx={{
+                                py: 0.6,
+                                '&:hover': { background: 'var(--accent-soft)' },
+                            }}
+                        >
+                            <ListItemText
+                                primary={row.label}
+                                primaryTypographyProps={{ fontSize: 13 }}
+                            />
+                            {!isGeneric && (
+                                <Box
+                                    component="span"
+                                    sx={{
+                                        ml: 2,
+                                        fontFamily: "'JetBrains Mono', monospace",
+                                        fontSize: 10,
+                                        color: 'var(--text-faint)',
+                                    }}
+                                >
+                                    {row.backend}
+                                    {row.format && row.format !== 'default' ? ` · ${row.format}` : ''}
+                                </Box>
+                            )}
+                            <OpenInNewRoundedIcon sx={{ fontSize: 12, ml: 1, color: 'var(--text-faint)', opacity: 0.7 }} />
+                        </MenuItem>
+                    );
+                })}
+            </Menu>
         </Dialog>
     );
 }

@@ -22,6 +22,7 @@ import { mergeTechniqueAndTestIntoForm } from '../utils/aiResponseValidator';
 import useLlmSettings from '../hooks/useLlmSettings';
 import useLocalLibrary from '../hooks/useLocalLibrary';
 import { useConfirm } from './ConfirmDialog';
+import ModelBadge from './ModelBadge';
 
 export default function VariantSuggestModal({ open, onClose, currentInputs, base, onLoadVariant, formIsModified }) {
     const settings = useLlmSettings();
@@ -181,8 +182,9 @@ export default function VariantSuggestModal({ open, onClose, currentInputs, base
                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5, py: 6 }}>
                         <CircularProgress size={20} />
                         <Typography fontSize={13} color="text.secondary">
-                            Asking {provider?.name || 'AI'} for distinct variants…
+                            Generating distinct variants…
                         </Typography>
+                        <ModelBadge providerName={provider?.name} model={model} sx={{ mt: 0.5 }} />
                     </Box>
                 )}
                 {state === 'error' && (

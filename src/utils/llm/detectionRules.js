@@ -1,10 +1,11 @@
-// Generate Sigma + Splunk detection rules from the current atomic test
-// via the configured BYOK LLM. Output is a starting point — the modal
-// always shows an "AI-generated, customize for your environment" banner.
+// Generate a Sigma rule for the current atomic test via the configured
+// BYOK LLM. Output is a starting point — the modal always shows an
+// "AI-generated, customize for your environment" banner, plus a deep link
+// to sigconverter.io so the user can convert to any SIEM backend.
 
-const TOOL_NAME = 'submit_detection_rules';
+const TOOL_NAME = 'submit_sigma_rule';
 const TOOL_DESCRIPTION =
-    'Submit a Sigma rule and a Splunk SPL search that detect the attack described in the input atomic test. Always call this tool exactly once.';
+    'Submit a Sigma rule that detects the attack described in the input atomic test. Always call this tool exactly once.';
 
 const TOOL_INPUT_SCHEMA = {
     type: 'object',
@@ -12,7 +13,7 @@ const TOOL_INPUT_SCHEMA = {
         action: {
             type: 'string',
             enum: ['generate', 'refuse'],
-            description: 'generate to return rules, refuse to politely decline.',
+            description: 'generate to return a rule, refuse to politely decline.',
         },
         reason: {
             type: 'string',
@@ -21,17 +22,11 @@ const TOOL_INPUT_SCHEMA = {
         sigma: {
             type: 'string',
             description:
-                'A complete, parse-clean Sigma rule YAML document. Must include at minimum: title, id (uuid), status, description, references, tags (with attack.t####), logsource, detection (with selection + condition), falsepositives, level. Output the YAML directly, no markdown fencing or explanation.',
-        },
-        splunk: {
-            type: 'string',
-            description:
-                'A Splunk SPL search query that catches the same attack. Target the right sourcetype (Sysmon EID 1 for Windows process creation, auditd / Sysmon-for-Linux for Linux/macOS, etc.). Output the SPL directly, no markdown fencing or explanation.',
+                'A complete, parse-clean, sigconverter-compatible Sigma rule YAML document. MUST include all of: title, id (UUID v4), status, description, references (array), author, date (YYYY-MM-DD), tags (array with attack.t#### entries), logsource (with category and/or product), detection (with at least one selection map and a condition string), falsepositives (array of realistic strings), level (informational | low | medium | high | critical). Output the YAML directly with NO markdown fencing and NO prose around it. Use 4-space indentation. Strings with special characters MUST be quoted. Multi-line strings should use the | block scalar.',
         },
         sigma_logsource: {
             type: 'string',
-            description:
-                'The Sigma logsource category you chose (e.g. "process_creation", "registry_event", "file_event", "network_connection"). Helps the UI badge the rule.',
+            description: 'The Sigma logsource category you chose (e.g. "process_creation"). Helps the UI label the rule.',
         },
         sigma_level: {
             type: 'string',
@@ -42,76 +37,88 @@ const TOOL_INPUT_SCHEMA = {
     required: ['action'],
 };
 
-const SYSTEM_PROMPT = `You are a senior SIEM detection engineer. Given an Atomic Red Team test (the attack), output TWO high-quality detection rules that would catch this attack in production telemetry. These are DETECTION rules, NOT additional attack code.
+const SYSTEM_PROMPT = `You are a senior SIEM detection engineer. Given an Atomic Red Team test (the attack), output ONE high-quality Sigma rule that would catch this attack in production telemetry. This is a DETECTION rule, NOT additional attack code.
 
-OUTPUT 1 — SIGMA RULE (valid Sigma YAML)
+═══════════════════════════════════════════════════════════════════
+SIGMA SPEC COMPLIANCE — your output MUST be a valid Sigma YAML document
+═══════════════════════════════════════════════════════════════════
 
-- Follow the Sigma spec strictly: https://github.com/SigmaHQ/sigma-specification
-- Pick the correct logsource category for what the attack ACTUALLY produces:
-    process_creation       — new process events (the most common; covers most LOLBin / shell-based tests)
-    registry_event         — registry create / set / delete (use Sysmon EID 12/13/14 semantics)
-    file_event             — file create / modify / delete on disk
-    network_connection     — outbound TCP/UDP / DNS / HTTP from a process
-    image_load             — DLL / image load events
-    ps_script              — PowerShell script-block content (EID 4104)
-- Use Sigma's standard Windows taxonomy field names ONLY:
-    Image, OriginalFileName, CommandLine, ParentImage, ParentCommandLine,
-    TargetFilename, TargetObject, Details, DestinationIp, DestinationHostname,
-    DestinationPort, User, IntegrityLevel, ScriptBlockText, ProcessName, etc.
-- Use the correct field modifiers: |endswith for image paths (\\\\schtasks.exe),
-    |contains for substrings, |contains|all for AND-of-substrings,
-    |startswith, |re for regex. Don't use undefined modifiers.
-- Anchor on at least ONE specific high-fidelity selector (image path, registry
-    key path, process+arg combo). Never write a rule whose selection is just a
-    generic image with no cmdline qualifier — that's noise.
-- Include condition (e.g. "selection", "selection and not filter").
-- Include tags as ["attack.t####", "attack.t####.###"] (lowercased).
-- Include realistic falsepositives entries — the actual benign sources for the
-    technique (e.g. "Software updaters using BITS", "GPO-deployed scheduled
-    tasks") — never just "Unknown".
-- Include level: informational | low | medium | high | critical based on
-    selector specificity (broad = low; multiple high-fidelity anchors = high).
-- Include id (random UUID v4), status: experimental, description, references
-    (attack.mitre.org/techniques/... and the atomic-red-team URL), author:
-    "atomicgen.io", date (today, YYYY-MM-DD).
-- Output the YAML directly, no \`\`\` fencing, no prose around it.
+Reference: https://github.com/SigmaHQ/sigma-specification/blob/main/specification/sigma-rules-specification.md
 
-OUTPUT 2 — SPLUNK SPL SEARCH
+REQUIRED top-level keys (every rule must have ALL of these):
+  title           : string, single line, descriptive ("Detects ..." or "<Action> via <method>")
+  id              : UUID v4 (lowercase, with hyphens) — generate a fresh one
+  status          : "test" or "experimental" (use "test" by default)
+  description     : 1–3 sentence prose describing what the rule catches
+  references      : array of strings (URLs only). MUST include attack.mitre.org link for the technique + atomic-red-team URL
+  author          : string — use "atomicgen.io"
+  date            : today's date in YYYY-MM-DD
+  tags            : array of strings — MUST include lowercase ["attack.t####", "attack.t####.###"] for the technique. Tactic tags optional ("attack.persistence" etc).
+  logsource       : object with at minimum a "category" key. Pick from:
+                      process_creation       — new process events (default for shell / LOLBin tests)
+                      registry_event         — registry create/set/delete (Sysmon EID 12/13/14)
+                      file_event             — file create/modify/delete
+                      network_connection     — outbound TCP/UDP/DNS/HTTP from a process
+                      image_load             — DLL/image load events
+                      ps_script              — PowerShell script-block content (EID 4104)
+                      ps_module              — PowerShell module load
+                    Add "product" (windows / linux / macos) when the rule is OS-specific.
+  detection       : object with at least one named selection map + a "condition" string.
+                    Selection examples:
+                      selection:
+                          Image|endswith: '\\\\schtasks.exe'
+                          CommandLine|contains|all:
+                              - '/Create'
+                              - '/SC'
+                    condition: selection
+                    OR multiple selections with filters:
+                      condition: selection and not filter_legitimate
+  falsepositives  : array of REALISTIC strings — actual benign sources for this technique. NEVER write "Unknown".
+                    Examples: "Software updaters using BITS", "GPO-deployed scheduled tasks", "Backup software interacting with VSS".
+  level           : exactly one of: informational | low | medium | high | critical
 
-- Target the correct source-type for the attack:
-    Windows process     →  sourcetype="WinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1
-    Windows registry    →  same sourcetype, EventCode=12 (create), 13 (set), 14 (rename)
-    Windows network     →  same sourcetype, EventCode=3
-    Linux process       →  sourcetype="Linux:auditd" type=EXECVE   OR   Sysmon-for-Linux EventCode=1
-    macOS process       →  ESF / Sysmon-for-Mac equivalent
-- Use Sysmon's exact field names: Image, CommandLine, ParentImage, ParentCommandLine,
-    TargetObject, Details, TargetFilename, DestinationIp, etc. (NOT generic
-    "command", "file", etc.)
-- Match windows path-style with "*\\\\binary.exe" patterns; case-insensitive matches
-    via lower(field).
-- Pipeline shape:
-    index=* <sourcetype clause>
-       <field>="*pattern*" <field>="*pattern2*"
-    | table _time, host, User, Image, CommandLine, ParentImage, ParentCommandLine
-- Use \`\`\` ... \`\`\` for SPL comments at the top (description + technique).
-- Output the SPL directly, no markdown fencing or explanation.
+VALID Sigma standard taxonomy field names (Windows process_creation):
+  Image, OriginalFileName, CommandLine, ParentImage, ParentCommandLine,
+  ParentProcessId, ProcessId, User, IntegrityLevel, CurrentDirectory,
+  Hashes, ImageLoaded, TargetFilename, TargetObject, Details,
+  DestinationIp, DestinationHostname, DestinationPort, SourceIp, SourcePort,
+  ScriptBlockText, ContextInfo, Payload
 
-CRITICAL RULES
+VALID field modifiers:
+  |contains, |contains|all, |contains|any, |startswith, |endswith,
+  |re, |re|i, |cidr, |gt, |gte, |lt, |lte, |all
+  Do NOT invent modifiers. Do NOT use undefined ones.
 
-- These are DETECTION rules — output the SIEM query, never attack scripts.
-- Use the ACTUAL artifacts from the test (real image, real cmdline keywords,
-    real registry path), not generic placeholders.
-- If the test command contains #{name} placeholders, treat them as variable
-    user-supplied values — substitute conservatively (e.g. * for "any value")
-    or omit from the selector if too variable. NEVER write the literal #{name}
-    into the SIEM rule.
-- Both rules must be VALID and parse-clean. The Sigma rule must roundtrip
-    through a YAML parser. The SPL must be syntactically correct.
-- Do NOT include any explanation, prose, or markdown around the rules. The
-    submit_detection_rules tool fields receive the raw rule strings only.
-- If the input atomic test is unsafe to detect-engineer for, ambiguous, or
-    you cannot produce useful rules, call action="refuse" with a one-sentence
-    reason.`;
+ANCHORING (critical for rule quality):
+  - Anchor on at LEAST one specific selector — image path AND a cmdline keyword,
+    or registry path AND value pattern. NEVER write a selection that is just an
+    image with no cmdline qualifier (would generate massive FP).
+  - Use the ACTUAL command, image, paths, and arguments from the input test.
+  - If the test command contains #{name} placeholders, treat them as variable
+    user-supplied values: substitute conservatively (e.g. * or omit from selector
+    if too variable). NEVER write the literal "#{name}" into the rule.
+
+YAML FORMATTING (sigconverter.io must parse this):
+  - 4-space indentation, NO tabs.
+  - Strings with special chars (\\ : * ? & |) MUST be single-quoted.
+  - Multi-line strings use | block scalar.
+  - References array uses dash-list style:
+        references:
+            - https://attack.mitre.org/techniques/T####/###/
+            - https://github.com/redcanaryco/atomic-red-team
+  - Output the YAML DIRECTLY. NO triple-backtick fencing. NO prose before or after.
+
+═══════════════════════════════════════════════════════════════════
+WHAT TO RETURN
+═══════════════════════════════════════════════════════════════════
+Call submit_sigma_rule exactly once with:
+  - action: "generate"
+  - sigma: the full YAML rule (raw, no fencing)
+  - sigma_logsource: the category you chose (e.g. "process_creation")
+  - sigma_level: the level you set inside the rule
+
+If the input test is unsafe to detect-engineer for, ambiguous, or you cannot
+produce a useful rule, call action="refuse" with a one-sentence reason.`;
 
 function buildUserPrompt(inputs) {
     const t = inputs || {};
@@ -133,8 +140,9 @@ function buildUserPrompt(inputs) {
         dependency_executor_name: t.dependency_executor_name,
     };
     return [
-        'Generate Sigma + Splunk detection rules for the following atomic test.',
+        'Generate a Sigma rule for the following atomic test.',
         'Use the actual command, image names, and arguments below as your selector anchors.',
+        `Today's date: ${new Date().toISOString().slice(0, 10)}`,
         '',
         '```json',
         JSON.stringify(ctx, null, 2),
@@ -174,10 +182,10 @@ async function callAnthropic({ apiKey, model, userPrompt, signal }) {
     }
     const data = await res.json();
     if (data.stop_reason === 'max_tokens') {
-        throw new Error('Detection-rule response truncated — try again.');
+        throw new Error('Sigma rule response truncated — try again.');
     }
     const toolUse = (data.content || []).find((c) => c.type === 'tool_use');
-    if (!toolUse || !toolUse.input) throw new Error('No tool_use returned for detection rules.');
+    if (!toolUse || !toolUse.input) throw new Error('No tool_use returned for Sigma rule.');
     return toolUse.input;
 }
 
@@ -217,16 +225,16 @@ async function callOpenai({ apiKey, model, userPrompt, signal }) {
     const data = await res.json();
     const choice = data.choices?.[0];
     if (choice?.finish_reason === 'length') {
-        throw new Error('Detection-rule response truncated — try again.');
+        throw new Error('Sigma rule response truncated — try again.');
     }
     const toolCall = choice?.message?.tool_calls?.[0];
     if (!toolCall || !toolCall.function?.arguments) {
-        throw new Error('No tool_call returned for detection rules.');
+        throw new Error('No tool_call returned for Sigma rule.');
     }
     try {
         return JSON.parse(toolCall.function.arguments);
     } catch {
-        throw new Error('Detection-rule tool arguments were malformed JSON — try again.');
+        throw new Error('Sigma rule tool arguments were malformed JSON — try again.');
     }
 }
 
@@ -244,19 +252,64 @@ function parseError(provider, status, text) {
     return msg ? `${provider} error: ${msg}` : `${provider} request failed (${status}).`;
 }
 
-export async function generateDetectionRules({ providerId, apiKey, model, currentInputs, signal }) {
+// Strip a leading ```yaml / ``` fence if the model added one despite the
+// system prompt asking it not to. Idempotent — returns the YAML body only.
+export function stripCodeFence(s) {
+    if (typeof s !== 'string') return s;
+    const trimmed = s.trim();
+    const m = trimmed.match(/^```(?:ya?ml)?\s*\n([\s\S]*?)\n```\s*$/i);
+    return m ? m[1] : s;
+}
+
+// Light client-side sanity check — surface obvious issues to the user
+// without rejecting the rule. Returns { ok, issues: [string] }.
+export function quickValidateSigma(yamlStr, yamlLib) {
+    const issues = [];
+    if (!yamlStr || typeof yamlStr !== 'string') {
+        return { ok: false, issues: ['empty rule'] };
+    }
+    let doc;
+    try {
+        doc = yamlLib.load(yamlStr);
+    } catch (e) {
+        return { ok: false, issues: [`YAML parse error: ${e.message || e}`] };
+    }
+    if (!doc || typeof doc !== 'object') return { ok: false, issues: ['rule did not parse to an object'] };
+    const required = ['title', 'id', 'status', 'description', 'logsource', 'detection', 'level'];
+    required.forEach((k) => {
+        if (!doc[k]) issues.push(`missing "${k}"`);
+    });
+    if (doc.id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(doc.id)) {
+        issues.push('id is not a valid UUID v4');
+    }
+    if (doc.detection && typeof doc.detection === 'object' && !doc.detection.condition) {
+        issues.push('detection block is missing "condition"');
+    }
+    if (doc.logsource && typeof doc.logsource === 'object' && !doc.logsource.category && !doc.logsource.product) {
+        issues.push('logsource needs at least "category" or "product"');
+    }
+    return { ok: issues.length === 0, issues };
+}
+
+export async function generateSigmaRule({ providerId, apiKey, model, currentInputs, signal }) {
     if (!currentInputs || !currentInputs.attack_technique) {
         throw new Error('Set ATT&CK technique and an attack command first.');
     }
     if (!currentInputs.executor || !currentInputs.executor.command) {
         const isManual = currentInputs.executor && currentInputs.executor.name === 'manual';
         if (!isManual || !currentInputs.executor.steps) {
-            throw new Error('Add an attack command (or manual steps) first — detection rules need a target.');
+            throw new Error('Add an attack command (or manual steps) first — Sigma needs a target.');
         }
     }
     const userPrompt = buildUserPrompt(currentInputs);
-    if (providerId === 'openai') {
-        return callOpenai({ apiKey, model, userPrompt, signal });
+    const result = providerId === 'openai'
+        ? await callOpenai({ apiKey, model, userPrompt, signal })
+        : await callAnthropic({ apiKey, model, userPrompt, signal });
+    if (result && typeof result.sigma === 'string') {
+        result.sigma = stripCodeFence(result.sigma);
     }
-    return callAnthropic({ apiKey, model, userPrompt, signal });
+    return result;
 }
+
+// Backwards-compat shim — earlier callers used `generateDetectionRules`.
+export const generateDetectionRules = generateSigmaRule;
