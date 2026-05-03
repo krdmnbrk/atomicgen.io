@@ -75,9 +75,10 @@ export function validationErrorsToFindings(validationErrors = []) {
         });
 }
 
-export function lintAtomic(inputs, atomicIndex = null) {
+export function lintAtomic(inputs, atomicIndex = null, opts = {}) {
     const findings = [];
     if (!inputs) return findings;
+    const originalGuid = opts.originalGuid || null;
 
     const exec = inputs.executor || {};
     const command = exec.command || '';
@@ -179,8 +180,15 @@ export function lintAtomic(inputs, atomicIndex = null) {
         }
     }
 
-    // AT011 — GUID collision against existing AT index
-    if (inputs.auto_generated_guid && atomicIndex && Array.isArray(atomicIndex.tests)) {
+    // AT011 — GUID collision against existing AT index. Skip when the current
+    // GUID is the one we loaded the test with (loading from the repo
+    // legitimately reuses an indexed GUID — that's not a collision).
+    if (
+        inputs.auto_generated_guid &&
+        atomicIndex &&
+        Array.isArray(atomicIndex.tests) &&
+        (!originalGuid || inputs.auto_generated_guid.toLowerCase() !== originalGuid.toLowerCase())
+    ) {
         const guid = inputs.auto_generated_guid.toLowerCase();
         const collision = atomicIndex.tests.find((t) => t.guid && t.guid.toLowerCase() === guid);
         if (collision) {

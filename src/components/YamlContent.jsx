@@ -40,14 +40,14 @@ const downloadStringAsFile = (filename, content) => {
   URL.revokeObjectURL(url);
 };
 
-function YamlContent({ darkMode, inputs, setInputs, setLoadedSource, updated, base, validationErrors, setChanged, changed, onReset, originalSnapshot }) {
+function YamlContent({ darkMode, inputs, setInputs, setLoadedSource, updated, base, validationErrors, setChanged, changed, onReset, originalSnapshot, originalGuid }) {
   const [formatted_yaml, setFormattedYaml] = React.useState(null);
   const [showContent, setShowContent] = React.useState(false);
   const [showLintPanel, setShowLintPanel] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
 
   // Unified lint findings (required-field validation + AT-spec lint).
-  const lintFindings = useLintFindings(inputs, validationErrors);
+  const lintFindings = useLintFindings(inputs, validationErrors, originalGuid);
   const lintCounts = summarizeFindings(lintFindings);
 
   const jumpToField = React.useCallback((fieldId) => {
@@ -313,35 +313,42 @@ function YamlContent({ darkMode, inputs, setInputs, setLoadedSource, updated, ba
           )}
         </Box>
         <Box sx={{ display: 'flex', gap: 0.5 }}>
-          <Tooltip
-            title={
-              showContent
-                ? inputs.attack_technique
-                  ? 'Contribute this test to atomic-red-team (open pre-filled fork on GitHub)'
-                  : 'Set an ATT&CK technique to enable contribute flow'
-                : 'Author a test first, then contribute'
-            }
-          >
-            <span>
-              <IconButton
-                disabled={!showContent || !inputs.attack_technique}
-                onClick={() => setContributeOpen(true)}
-                sx={{
-                  ...iconBtnSx,
-                  color: 'primary.main',
-                  borderColor: 'rgba(255,92,57,0.40)',
-                  '&:hover': {
-                    background: 'var(--accent-soft)',
-                    color: 'primary.main',
-                    borderColor: 'primary.main',
-                  },
-                }}
-                aria-label="Contribute to atomic-red-team"
-              >
-                <CallSplitRoundedIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-            </span>
-          </Tooltip>
+          {(() => {
+            const unchangedFromOriginal =
+              !!originalSnapshot && formatted_yaml === originalSnapshot;
+            const tooltip = !showContent
+              ? 'Author a test first, then contribute'
+              : !inputs.attack_technique
+              ? 'Set an ATT&CK technique to enable contribute flow'
+              : unchangedFromOriginal
+              ? 'No changes vs the loaded test — edit something before contributing'
+              : 'Contribute this test to atomic-red-team (open pre-filled fork on GitHub)';
+            return (
+              <Tooltip title={tooltip}>
+                <span>
+                  <IconButton
+                    disabled={
+                      !showContent || !inputs.attack_technique || unchangedFromOriginal
+                    }
+                    onClick={() => setContributeOpen(true)}
+                    sx={{
+                      ...iconBtnSx,
+                      color: 'primary.main',
+                      borderColor: 'rgba(255,92,57,0.40)',
+                      '&:hover': {
+                        background: 'var(--accent-soft)',
+                        color: 'primary.main',
+                        borderColor: 'primary.main',
+                      },
+                    }}
+                    aria-label="Contribute to atomic-red-team"
+                  >
+                    <CallSplitRoundedIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            );
+          })()}
           <Tooltip
             title={
               showContent

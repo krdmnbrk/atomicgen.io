@@ -74,11 +74,9 @@ export default function VariantSuggestModal({ open, onClose, currentInputs, base
     }, [provider, apiKey, model, currentInputs]);
 
     React.useEffect(() => {
-        if (open && state === 'idle') {
-            run();
-        }
+        // No auto-run on open — show explainer first, let the user trigger
+        // the AI call explicitly. Reset state when the modal closes.
         if (!open) {
-            // Reset for next open
             setState('idle');
             setVariants([]);
             setError(null);
@@ -149,6 +147,36 @@ export default function VariantSuggestModal({ open, onClose, currentInputs, base
             </DialogTitle>
 
             <DialogContent sx={{ p: 2, minHeight: 320 }}>
+                {state === 'idle' && (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, py: 1 }}>
+                        <Typography sx={{ fontSize: 13, color: 'text.primary', lineHeight: 1.55 }}>
+                            Variant brainstorm asks the configured AI provider to propose
+                            <Box component="strong" sx={{ color: 'primary.main' }}>{' '}2&ndash;4 distinct alternative implementations{' '}</Box>
+                            of the SAME ATT&amp;CK technique &mdash; useful for broader detection coverage.
+                        </Typography>
+                        <Box
+                            component="ul"
+                            sx={{
+                                m: 0,
+                                pl: 2.5,
+                                fontSize: 12.5,
+                                color: 'text.secondary',
+                                lineHeight: 1.7,
+                                '& li::marker': { color: 'var(--accent)' },
+                            }}
+                        >
+                            <li>Variants vary on: alternate LOLBin / shell / obfuscation level / platform / parameters.</li>
+                            <li>Each variant is a complete atomic test definition you can <em>load into the form</em> or <em>save to My Tests</em> as a separate entry.</li>
+                            <li>Uses your <strong>BYOK</strong> {provider?.name || 'AI'} key &mdash; one API call, billed to your account.</li>
+                            <li>Generation is non-deterministic &mdash; re-roll if the first batch isn&rsquo;t useful.</li>
+                        </Box>
+                        {(!provider || !apiKey) && (
+                            <Alert severity="warning" variant="outlined" sx={{ borderRadius: 2 }}>
+                                Configure your AI provider key first (settings) before generating variants.
+                            </Alert>
+                        )}
+                    </Box>
+                )}
                 {state === 'loading' && (
                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5, py: 6 }}>
                         <CircularProgress size={20} />
@@ -278,14 +306,27 @@ export default function VariantSuggestModal({ open, onClose, currentInputs, base
             </DialogContent>
 
             <DialogActions sx={{ px: 2, py: 1.5, borderTop: '1px solid var(--glass-stroke)' }}>
-                <Button
-                    onClick={run}
-                    disabled={state === 'loading'}
-                    startIcon={<ReplayRoundedIcon />}
-                    sx={{ textTransform: 'none' }}
-                >
-                    Re-roll
-                </Button>
+                {state === 'idle' || state === 'error' || state === 'refused' ? (
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={run}
+                        disabled={!provider || !apiKey}
+                        startIcon={<AutoAwesomeRoundedIcon />}
+                        sx={{ textTransform: 'none', borderRadius: 2 }}
+                    >
+                        {state === 'idle' ? 'Generate variants' : 'Try again'}
+                    </Button>
+                ) : (
+                    <Button
+                        onClick={run}
+                        disabled={state === 'loading'}
+                        startIcon={<ReplayRoundedIcon />}
+                        sx={{ textTransform: 'none' }}
+                    >
+                        Re-roll
+                    </Button>
+                )}
                 <Box sx={{ flex: 1 }} />
                 <Button onClick={onClose} sx={{ textTransform: 'none' }}>Close</Button>
             </DialogActions>

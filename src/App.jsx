@@ -148,6 +148,10 @@ function App() {
   // Snapshot of YAML at the moment a test was loaded — used by the Diff tab
   // so users can see exactly what they've changed since hydration.
   const [originalSnapshot, setOriginalSnapshot] = useState(null);
+  // Original GUID at load time — used by the linter to suppress AT011
+  // collision warnings when the user simply hasn't regenerated the GUID
+  // of a test loaded from the AT index.
+  const [originalGuid, setOriginalGuid] = useState(null);
   // Draft restore prompt (shown on initial load if a saved draft exists)
   const [draftRestoreOpen, setDraftRestoreOpen] = useState(false);
   const [savedDraft, setSavedDraft] = useState(null);
@@ -233,11 +237,12 @@ function App() {
 
   // Reset with undo
   const resetWithUndo = () => {
-    const snapshot = { inputs, source: loadedSource, originalSnapshot };
+    const snapshot = { inputs, source: loadedSource, originalSnapshot, originalGuid };
     setInputs(base);
     setChanged(false);
     setLoadedSource(null);
     setOriginalSnapshot(null);
+    setOriginalGuid(null);
     setUndoSnack({ open: true, snapshot });
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     undoTimerRef.current = setTimeout(() => {
@@ -249,20 +254,24 @@ function App() {
       setInputs(undoSnack.snapshot.inputs);
       setLoadedSource(undoSnack.snapshot.source);
       setOriginalSnapshot(undoSnack.snapshot.originalSnapshot || null);
+      setOriginalGuid(undoSnack.snapshot.originalGuid || null);
     }
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     setUndoSnack({ open: false, snapshot: null });
   };
 
-  // Snapshot the YAML when a test is loaded from anywhere (repo / upload /
-  // sample / AI / draft). Intentionally only depends on `loadedSource` —
-  // setInputs + setLoadedSource batch in the same handler, so by the time
-  // this effect runs, `inputs` already reflects the loaded test.
+  // Snapshot the YAML + GUID when a test is loaded from anywhere (repo /
+  // upload / sample / AI / draft). Intentionally only depends on
+  // `loadedSource` — setInputs + setLoadedSource batch in the same handler,
+  // so by the time this effect runs, `inputs` already reflects the loaded
+  // test.
   useEffect(() => {
     if (loadedSource) {
       setOriginalSnapshot(inputsToYaml(inputs));
+      setOriginalGuid(inputs.auto_generated_guid || null);
     } else {
       setOriginalSnapshot(null);
+      setOriginalGuid(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadedSource]);
@@ -624,6 +633,7 @@ function App() {
               changed={changed}
               onReset={resetWithUndo}
               originalSnapshot={originalSnapshot}
+              originalGuid={originalGuid}
             />
           </Grid>
         </Grid>
