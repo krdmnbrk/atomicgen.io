@@ -1,0 +1,447 @@
+{
+  "_meta": {
+    "version": 1,
+    "note": "Curated detection guidance for the most-tested ATT&CK techniques. Best-effort, not authoritative — always cross-reference attack.mitre.org and tune for your environment."
+  },
+  "techniques": {
+    "T1059.001": {
+      "name": "Command and Scripting Interpreter: PowerShell",
+      "data_components": ["Process Creation", "Script Execution", "Module Load", "Command Execution"],
+      "log_sources": {
+        "windows": [
+          "Sysmon EID 1 — powershell.exe / pwsh.exe process creation (note parent / cmdline)",
+          "Sysmon EID 7 — System.Management.Automation.dll loaded by non-PS host (suspicious)",
+          "Microsoft-Windows-PowerShell/Operational EID 4104 — Script Block Logging",
+          "Microsoft-Windows-PowerShell/Operational EID 4103 — Module Logging",
+          "Security EID 4688 — process creation w/ PSReadline / encoded commands",
+          "AMSI / Defender ETW for in-memory script content"
+        ]
+      },
+      "fp_notes": [
+        "Admin scripts and SCCM run PowerShell at scale — pivot on parent (excel.exe / outlook.exe / wscript.exe = high signal)",
+        "Encoded commands (-EncodedCommand) are common in SCCM but rare in human admin use"
+      ]
+    },
+    "T1059.003": {
+      "name": "Command and Scripting Interpreter: Windows Command Shell",
+      "data_components": ["Process Creation", "Command Execution"],
+      "log_sources": {
+        "windows": [
+          "Sysmon EID 1 — cmd.exe with suspicious parent (winword.exe / outlook.exe / regsvr32.exe)",
+          "Security EID 4688 — process creation"
+        ]
+      },
+      "fp_notes": ["cmd.exe is everywhere — selectivity comes from parent + cmdline patterns"]
+    },
+    "T1059.004": {
+      "name": "Command and Scripting Interpreter: Unix Shell",
+      "data_components": ["Process Creation", "Command Execution"],
+      "log_sources": {
+        "linux": [
+          "auditd execve syscalls for /bin/sh, /bin/bash with notable comm",
+          "Sysmon for Linux — ProcessCreate event",
+          "EDR shell history exfil / large pipe-to-shell patterns"
+        ],
+        "macos": [
+          "ESF NOTIFY_EXEC events with unusual parent (e.g., browser, document app)",
+          "Unified Logs — process subsystem"
+        ]
+      },
+      "fp_notes": ["Build pipelines and admin scripts produce massive shell volume — filter on user / TTY / parent"]
+    },
+    "T1053.005": {
+      "name": "Scheduled Task/Job: Scheduled Task",
+      "data_components": ["Process Creation", "Scheduled Job Creation", "Scheduled Job Modification", "File Creation"],
+      "log_sources": {
+        "windows": [
+          "Security EID 4698 — A scheduled task was created (target name + author)",
+          "Security EID 4702 — A scheduled task was updated",
+          "Security EID 4699 — A scheduled task was deleted",
+          "Microsoft-Windows-TaskScheduler/Operational EID 106",
+          "Sysmon EID 1 — schtasks.exe / taskeng.exe process creation",
+          "Sysmon EID 11 — file creation under \\Windows\\System32\\Tasks\\"
+        ]
+      },
+      "fp_notes": [
+        "Software updaters (Adobe, Chrome, Edge, NVIDIA) churn maintenance tasks constantly",
+        "Domain admins deploy tasks via GPO — pivot on author / source IP"
+      ]
+    },
+    "T1053.003": {
+      "name": "Scheduled Task/Job: Cron",
+      "data_components": ["Process Creation", "File Modification", "Scheduled Job Creation"],
+      "log_sources": {
+        "linux": [
+          "auditd file watches on /etc/crontab, /etc/cron.d/, /var/spool/cron/",
+          "Sysmon for Linux — file create/modify events under cron paths",
+          "Process events for crontab edits via crontab -e"
+        ],
+        "macos": ["Same cron paths as Linux; LaunchAgents covered under T1543.001/004"]
+      },
+      "fp_notes": ["Package installs add cron entries — correlate with package manager activity"]
+    },
+    "T1547.001": {
+      "name": "Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder",
+      "data_components": ["Windows Registry Key Creation", "Windows Registry Key Modification", "File Creation", "Process Creation"],
+      "log_sources": {
+        "windows": [
+          "Sysmon EID 13 — registry value set under HKLM/HKCU\\...\\CurrentVersion\\Run* / RunOnce*",
+          "Security EID 4657 — registry value modified (requires SACL)",
+          "Sysmon EID 11 — file create in %APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\"
+        ]
+      },
+      "fp_notes": [
+        "Most software installs write Run keys — pivot on uncommon binaries and untrusted paths (%APPDATA%, %TEMP%)"
+      ]
+    },
+    "T1547.004": {
+      "name": "Boot or Logon Autostart Execution: Winlogon Helper DLL",
+      "data_components": ["Windows Registry Key Modification", "Module Load", "Process Creation"],
+      "log_sources": {
+        "windows": [
+          "Sysmon EID 13 — registry writes to HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\(Userinit|Shell|Notify)",
+          "Sysmon EID 7 — image load by winlogon.exe of an unusual DLL"
+        ]
+      },
+      "fp_notes": ["Userinit/Shell modifications are extremely rare on healthy hosts — high-fidelity signal"]
+    },
+    "T1543.003": {
+      "name": "Create or Modify System Process: Windows Service",
+      "data_components": ["Service Creation", "Service Modification", "Process Creation", "Windows Registry Key Creation"],
+      "log_sources": {
+        "windows": [
+          "Security EID 4697 — A service was installed",
+          "System EID 7045 — A service was installed in the system",
+          "Sysmon EID 1 — sc.exe / New-Service process creation",
+          "Sysmon EID 13 — registry writes under HKLM\\System\\CurrentControlSet\\Services\\*"
+        ]
+      },
+      "fp_notes": [
+        "Software installers create services — selectivity from service binary path and account",
+        "PsExec and remote management create transient services (PSEXESVC, etc.)"
+      ]
+    },
+    "T1543.001": {
+      "name": "Create or Modify System Process: Launch Agent",
+      "data_components": ["File Creation", "File Modification", "Process Creation"],
+      "log_sources": {
+        "macos": [
+          "ESF NOTIFY_CREATE / NOTIFY_WRITE on ~/Library/LaunchAgents/*.plist and /Library/LaunchAgents/*.plist",
+          "Unified Logs — com.apple.xpc.launchd subsystem",
+          "Process events for launchctl load"
+        ]
+      },
+      "fp_notes": ["Most apps install LaunchAgents on first run — selectivity from signing / unsigned binaries"]
+    },
+    "T1548.002": {
+      "name": "Abuse Elevation Control Mechanism: Bypass User Account Control",
+      "data_components": ["Process Creation", "Process Metadata", "Windows Registry Key Modification"],
+      "log_sources": {
+        "windows": [
+          "Sysmon EID 1 — process integrity High/System with parent of Medium and IntegrityLevel mismatch",
+          "Sysmon EID 13 — registry writes to HKCU\\Software\\Classes\\* (CMSTP / fodhelper / eventvwr UAC bypass families)",
+          "Defender ETW — UAC bypass detections"
+        ]
+      },
+      "fp_notes": [
+        "Fodhelper / sdclt / eventvwr-based UAC bypasses are well-known — high-fidelity rules exist (sigma)",
+        "Legitimate consent prompts on admin workstations — filter via session"
+      ]
+    },
+    "T1003.001": {
+      "name": "OS Credential Dumping: LSASS Memory",
+      "data_components": ["Process Access", "OS API Execution", "Process Creation"],
+      "log_sources": {
+        "windows": [
+          "Sysmon EID 10 — process accessed lsass.exe with GrantedAccess 0x1010 / 0x1410 / 0x1438 / 0x143A",
+          "Microsoft-Windows-Security-Auditing EID 4663 — handle to lsass with sensitive access (requires SACL)",
+          "Microsoft Defender — Sensitive Credential Memory Read",
+          "EDR LSASS protection tampering events"
+        ]
+      },
+      "fp_notes": [
+        "Antivirus / EDR processes access lsass legitimately — allowlist by signed process",
+        "Mimikatz / pypykatz / nanodump / dumpert are common families — process command-line filters help"
+      ]
+    },
+    "T1003.002": {
+      "name": "OS Credential Dumping: Security Account Manager",
+      "data_components": ["File Access", "OS API Execution", "Process Creation"],
+      "log_sources": {
+        "windows": [
+          "Sysmon EID 1 — reg.exe save HKLM\\SAM / vssadmin create shadow / esentutl with copy",
+          "Sysmon EID 11 — file create matching SAM/SYSTEM hive copies in non-standard paths",
+          "Security EID 4688 — process creation w/ above signatures"
+        ]
+      },
+      "fp_notes": ["Backup software interacts with VSS — filter on parent / signed status"]
+    },
+    "T1110.003": {
+      "name": "Brute Force: Password Spraying",
+      "data_components": ["Logon Session Creation", "User Account Authentication"],
+      "log_sources": {
+        "windows": [
+          "Security EID 4625 — failed logons grouped by source / single-account-many-IPs or one-IP-many-accounts",
+          "Security EID 4624 — successful logons after sequence of 4625 from same source"
+        ],
+        "office-365": [
+          "AzureAD Sign-in logs — UserPrincipalName + IPAddress + ResultType",
+          "UAL UserLoggedIn / UserLoginFailed grouped by IP"
+        ]
+      },
+      "fp_notes": ["Misconfigured services can trigger massive 4625 — exclude known bad-credential service accounts"]
+    },
+    "T1078": {
+      "name": "Valid Accounts",
+      "data_components": ["Logon Session Creation", "User Account Authentication"],
+      "log_sources": {
+        "windows": [
+          "Security EID 4624 — Type 3/10 (network/RDP) from unusual source",
+          "Security EID 4672 — Special privileges assigned"
+        ],
+        "office-365": [
+          "Impossible-travel / atypical-location risk events (Identity Protection)",
+          "Sign-in logs with unusual UserAgent / DeviceTrust state"
+        ]
+      },
+      "fp_notes": ["Always-on VPN exits and mobile roaming generate noisy 'unusual location' alerts"]
+    },
+    "T1018": {
+      "name": "Remote System Discovery",
+      "data_components": ["Process Creation", "Network Connection Creation"],
+      "log_sources": {
+        "windows": [
+          "Sysmon EID 1 — net.exe view, nltest, dsquery, Get-ADComputer",
+          "Sysmon EID 3 — large fan-out SMB/445 from a single source"
+        ]
+      },
+      "fp_notes": ["Domain admin scripts inventory hosts at scale — filter by source host class"]
+    },
+    "T1057": {
+      "name": "Process Discovery",
+      "data_components": ["OS API Execution", "Process Creation"],
+      "log_sources": {
+        "windows": [
+          "Sysmon EID 1 — tasklist / Get-Process / wmic process list / qprocess",
+          "Sysmon EID 10 — handles opened to many processes from a single source"
+        ],
+        "linux": ["auditd execve for ps, top, htop, lsof", "Sysmon for Linux ProcessCreate"],
+        "macos": ["ESF NOTIFY_EXEC for ps, top, lsof"]
+      },
+      "fp_notes": ["Monitoring agents enumerate processes constantly — exclude known agents"]
+    },
+    "T1082": {
+      "name": "System Information Discovery",
+      "data_components": ["Process Creation", "OS API Execution"],
+      "log_sources": {
+        "windows": [
+          "Sysmon EID 1 — systeminfo.exe / hostname.exe / wmic computersystem / Get-ComputerInfo",
+          "Security EID 4688 — process creation matching above"
+        ],
+        "linux": ["auditd execve uname, hostnamectl, lscpu, /etc/os-release reads"],
+        "macos": ["ESF NOTIFY_EXEC for sw_vers, system_profiler"]
+      },
+      "fp_notes": ["Asset inventory scans run these constantly — pivot on chained discovery (multiple recon cmds in 60s)"]
+    },
+    "T1083": {
+      "name": "File and Directory Discovery",
+      "data_components": ["Process Creation", "File Access"],
+      "log_sources": {
+        "windows": [
+          "Sysmon EID 1 — dir, tree, where, Get-ChildItem -Recurse with broad patterns",
+          "Sysmon EID 11 (read access logs require Win 10+ + audit policy)"
+        ],
+        "linux": ["auditd execve for find / locate / ls -laR with notable args"]
+      },
+      "fp_notes": ["Backup and AV scanning generate huge volume — filter by parent and recursion depth heuristics"]
+    },
+    "T1027": {
+      "name": "Obfuscated Files or Information",
+      "data_components": ["File Metadata", "File Content", "Script Execution"],
+      "log_sources": {
+        "windows": [
+          "PowerShell EID 4104 — script blocks with high entropy / IEX (New-Object Net.WebClient).DownloadString patterns",
+          "Sysmon EID 1 — powershell -EncodedCommand … with base64 payloads",
+          "AMSI flagged content"
+        ]
+      },
+      "fp_notes": ["SCCM / Intune use encoded commands — allowlist by known publisher cert"]
+    },
+    "T1070.001": {
+      "name": "Indicator Removal: Clear Windows Event Logs",
+      "data_components": ["Process Creation", "Windows Event Log"],
+      "log_sources": {
+        "windows": [
+          "Security EID 1102 — Audit log was cleared",
+          "System EID 104 — Log was cleared",
+          "Sysmon EID 1 — wevtutil cl, Clear-EventLog"
+        ]
+      },
+      "fp_notes": ["Log clearance is rare and high-fidelity — almost always investigate"]
+    },
+    "T1112": {
+      "name": "Modify Registry",
+      "data_components": ["Windows Registry Key Modification", "Windows Registry Key Creation", "Windows Registry Key Deletion"],
+      "log_sources": {
+        "windows": [
+          "Sysmon EID 12/13/14 — registry create/set/delete with key + value detail",
+          "Security EID 4657 — registry value modified (requires SACL)"
+        ]
+      },
+      "fp_notes": ["Massive baseline volume — selectivity from key path patterns"]
+    },
+    "T1105": {
+      "name": "Ingress Tool Transfer",
+      "data_components": ["Network Connection Creation", "Network Traffic Content", "File Creation", "Process Creation"],
+      "log_sources": {
+        "windows": [
+          "Sysmon EID 1 — curl.exe / certutil.exe -urlcache / bitsadmin / Invoke-WebRequest / wget.exe",
+          "Sysmon EID 3 — outbound from unusual processes (lolbins) to unusual destinations",
+          "Sysmon EID 11 — file create in %TEMP% / %APPDATA% post-download",
+          "Proxy / DNS logs — uncommon destinations from server hosts"
+        ],
+        "linux": ["auditd / Sysmon for Linux execve for wget/curl with output redirect to disk"]
+      },
+      "fp_notes": ["Software updaters use BITS legitimately — filter by destination domain reputation"]
+    },
+    "T1071.001": {
+      "name": "Application Layer Protocol: Web Protocols",
+      "data_components": ["Network Connection Creation", "Network Traffic Content", "Network Traffic Flow"],
+      "log_sources": {
+        "windows": [
+          "Sysmon EID 3 — outbound from unusual binaries (lolbins) on 80/443",
+          "Proxy logs — unusual UA strings, beaconing intervals",
+          "DNS logs — high-entropy / DGA domains"
+        ]
+      },
+      "fp_notes": ["Beaconing detection benefits from interval-and-jitter analysis, not just IOCs"]
+    },
+    "T1090": {
+      "name": "Proxy",
+      "data_components": ["Network Connection Creation", "Network Traffic Flow"],
+      "log_sources": {
+        "windows": [
+          "Sysmon EID 3 — sustained outbound TCP from unusual processes",
+          "Firewall / NetFlow — long-lived flows to new external endpoints"
+        ]
+      },
+      "fp_notes": ["Legit reverse-tunnels (ngrok, cloudflared) increasingly common — score by binary reputation"]
+    },
+    "T1486": {
+      "name": "Data Encrypted for Impact",
+      "data_components": ["File Creation", "File Modification", "Process Creation", "Cloud Storage Modification"],
+      "log_sources": {
+        "windows": [
+          "Sysmon EID 11 — bursts of writes with new extensions / ransom notes",
+          "Sysmon EID 23 — file delete bursts (shadow copy / recycle bin clear)",
+          "Defender ASR — ransomware-like behavior detections"
+        ]
+      },
+      "fp_notes": ["Detection at write-burst level is late — pair with EDR behavioral protection"]
+    },
+    "T1489": {
+      "name": "Service Stop",
+      "data_components": ["Service Metadata", "Process Creation"],
+      "log_sources": {
+        "windows": [
+          "System EID 7036 — service entered the stopped state (filter on EDR / AV / backup services)",
+          "Security EID 4697 — service installed (precursor)",
+          "Sysmon EID 1 — sc.exe stop / Stop-Service / net stop"
+        ]
+      },
+      "fp_notes": ["Patching reboots stop services normally — pivot on user / non-admin originator"]
+    },
+    "T1485": {
+      "name": "Data Destruction",
+      "data_components": ["File Deletion", "Process Creation", "Cloud Storage Deletion"],
+      "log_sources": {
+        "windows": [
+          "Sysmon EID 23/26 — file delete bursts",
+          "Sysmon EID 1 — sdelete, cipher /w, format, fsutil file setzerodata"
+        ]
+      },
+      "fp_notes": ["Disposal / re-imaging tools trigger this — pivot on session and host context"]
+    },
+    "T1490": {
+      "name": "Inhibit System Recovery",
+      "data_components": ["Process Creation", "Service Metadata", "File Deletion"],
+      "log_sources": {
+        "windows": [
+          "Sysmon EID 1 — vssadmin delete shadows / wmic shadowcopy delete / wbadmin delete catalog / bcdedit /set {default} bootstatuspolicy ignoreallfailures",
+          "System EID 7036 — VSS service stopped"
+        ]
+      },
+      "fp_notes": ["Very high-fidelity — VSS deletion is rare in normal ops"]
+    },
+    "T1136.001": {
+      "name": "Create Account: Local Account",
+      "data_components": ["User Account Creation", "Process Creation"],
+      "log_sources": {
+        "windows": [
+          "Security EID 4720 — A user account was created",
+          "Security EID 4732 — A member was added to a security-enabled local group",
+          "Sysmon EID 1 — net.exe user /add"
+        ],
+        "linux": ["auditd useradd / adduser execve, /etc/passwd modification"]
+      },
+      "fp_notes": ["Onboarding scripts create accounts at scale — filter by source / time of day"]
+    },
+    "T1021.002": {
+      "name": "Remote Services: SMB/Windows Admin Shares",
+      "data_components": ["Network Connection Creation", "Logon Session Creation", "Process Creation"],
+      "log_sources": {
+        "windows": [
+          "Security EID 4624 type 3 from non-DC source",
+          "Sysmon EID 3 — outbound 445 from non-server hosts",
+          "Sysmon EID 11 — file create in ADMIN$ / C$ from remote source"
+        ]
+      },
+      "fp_notes": ["Admin tooling (PsExec, SCCM remote actions) exercises this constantly"]
+    },
+    "T1021.001": {
+      "name": "Remote Services: Remote Desktop Protocol",
+      "data_components": ["Logon Session Creation", "Network Connection Creation"],
+      "log_sources": {
+        "windows": [
+          "Security EID 4624 type 10 (RDP)",
+          "Microsoft-Windows-TerminalServices-LocalSessionManager/Operational EID 21/25",
+          "Firewall — inbound 3389 from outside known jumpbox subnets"
+        ]
+      },
+      "fp_notes": ["RDP from outside jumpbox = always investigate; inside jumpbox = baseline noise"]
+    },
+    "T1133": {
+      "name": "External Remote Services",
+      "data_components": ["Logon Session Creation", "Network Connection Creation"],
+      "log_sources": {
+        "office-365": [
+          "AzureAD sign-ins — VPN gateways, Citrix, AnyConnect, GlobalProtect appliances",
+          "Conditional Access — sign-ins bypassing MFA"
+        ]
+      },
+      "fp_notes": ["VPN and remote-work tooling is heavy baseline — focus on impossible travel + new device"]
+    },
+    "T1567.002": {
+      "name": "Exfiltration Over Web Service: Exfiltration to Cloud Storage",
+      "data_components": ["Network Connection Creation", "Network Traffic Content", "Network Traffic Flow"],
+      "log_sources": {
+        "windows": [
+          "Proxy / DLP logs — POST/PUT to *.dropbox / mega.nz / *.s3.amazonaws / *.transfer.sh / paste.ee",
+          "Sysmon EID 3 — outbound from unusual processes to known file-share CIDRs"
+        ]
+      },
+      "fp_notes": ["SaaS productivity tools generate massive cloud-storage traffic — DLP-content rules > IP-only rules"]
+    },
+    "T1041": {
+      "name": "Exfiltration Over C2 Channel",
+      "data_components": ["Network Traffic Flow", "Network Connection Creation"],
+      "log_sources": {
+        "windows": [
+          "NetFlow — long-lived high-volume out-bytes from a host with low in-bytes ratio",
+          "Proxy — POST traffic with unusually large payloads"
+        ]
+      },
+      "fp_notes": ["Backup uploads + cloud sync produce similar shapes — bias on host class and process"]
+    }
+  }
+}
