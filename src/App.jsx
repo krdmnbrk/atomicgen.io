@@ -613,6 +613,7 @@ function App() {
               setErrors={setErrors}
               inputs={inputs}
               setInputs={setInputs}
+              setLoadedSource={setLoadedSource}
               updated={updated}
               validationErrors={validationErrors}
               setChanged={setChanged}

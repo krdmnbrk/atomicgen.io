@@ -13,6 +13,7 @@ import TerminalRoundedIcon from '@mui/icons-material/TerminalRounded';
 import RadarRoundedIcon from '@mui/icons-material/RadarRounded';
 import CallSplitRoundedIcon from '@mui/icons-material/CallSplitRounded';
 import IosShareRoundedIcon from '@mui/icons-material/IosShareRounded';
+import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Editor from './Editor';
@@ -21,6 +22,7 @@ import DetectionExportModal from './DetectionExportModal';
 import ContributeModal from './ContributeModal';
 import DryRunPreview from './DryRunPreview';
 import DiffViewer from './DiffViewer';
+import VariantSuggestModal from './VariantSuggestModal';
 import useLintFindings from '../hooks/useLintFindings';
 import { summarizeFindings } from '../utils/atLinter';
 import { inputsToYaml, inputsToAtomicTestObject } from '../utils/atomicYaml';
@@ -38,7 +40,7 @@ const downloadStringAsFile = (filename, content) => {
   URL.revokeObjectURL(url);
 };
 
-function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErrors, setChanged, changed, onReset, originalSnapshot }) {
+function YamlContent({ darkMode, inputs, setInputs, setLoadedSource, updated, base, validationErrors, setChanged, changed, onReset, originalSnapshot }) {
   const [formatted_yaml, setFormattedYaml] = React.useState(null);
   const [showContent, setShowContent] = React.useState(false);
   const [showLintPanel, setShowLintPanel] = React.useState(false);
@@ -105,6 +107,7 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
 
   const [detectionOpen, setDetectionOpen] = React.useState(false);
   const [contributeOpen, setContributeOpen] = React.useState(false);
+  const [variantsOpen, setVariantsOpen] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState('yaml');
   const [copiedSnippet, setCopiedSnippet] = React.useState(false);
   const [copiedShare, setCopiedShare] = React.useState(false);
@@ -359,6 +362,26 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
           </Tooltip>
           <Tooltip
             title={
+              showContent
+                ? inputs.executor && inputs.executor.command
+                  ? 'Suggest variants — alternative implementations of the same technique'
+                  : 'Add an attack command first, then ask for variants'
+                : 'Author a test first, then ask for variants'
+            }
+          >
+            <span>
+              <IconButton
+                disabled={!showContent || !inputs.executor || !inputs.executor.command}
+                onClick={() => setVariantsOpen(true)}
+                sx={iconBtnSx}
+                aria-label="Suggest variants"
+              >
+                <AutoAwesomeRoundedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip
+            title={
               copiedSnippet
                 ? 'Copied!'
                 : invokeAtomicSnippet
@@ -471,6 +494,21 @@ function YamlContent({ darkMode, inputs, setInputs, updated, base, validationErr
         inputs={inputs}
         formattedYaml={formatted_yaml}
         lintErrorCount={errorCount}
+      />
+
+      {/* Variant brainstorm modal */}
+      <VariantSuggestModal
+        open={variantsOpen}
+        onClose={() => setVariantsOpen(false)}
+        currentInputs={inputs}
+        base={base}
+        formIsModified={changed}
+        onLoadVariant={(next) => {
+          setInputs(next);
+          if (typeof setLoadedSource === 'function') {
+            setLoadedSource({ type: 'ai' });
+          }
+        }}
       />
 
       {/* Body */}
